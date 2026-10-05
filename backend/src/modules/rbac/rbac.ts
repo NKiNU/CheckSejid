@@ -17,18 +17,17 @@ export const roleNotGrantable = () =>
 // `owner` is derived from Organisation.ownerId; the others are MembershipRole rows.
 // A membership that does not exist in this organisation has no roles (fail closed, RBAC-010).
 export async function membershipRoles(t: TenantContext, db: Prisma.TransactionClient = prisma): Promise<RoleKey[]> {
-  const [membership, org, rows] = await Promise.all([
-    forTenant(t.organisationId, db).organisationMembership.findUnique({
-      where: { id: t.membershipId },
-      select: { userId: true },
-    }),
-    db.organisation.findUnique({ where: { id: t.organisationId }, select: { ownerId: true } }),
-    forTenant(t.organisationId, db).membershipRole.findMany({
-      where: { membershipId: t.membershipId },
-      select: { role: true },
-      orderBy: { role: "asc" }, // enum declaration order
-    }),
-  ]);
+  // Sequential, not Promise.all: `db` may be a transaction client (one connection).
+  const membership = await forTenant(t.organisationId, db).organisationMembership.findUnique({
+    where: { id: t.membershipId },
+    select: { userId: true },
+  });
+  const org = await db.organisation.findUnique({ where: { id: t.organisationId }, select: { ownerId: true } });
+  const rows = await forTenant(t.organisationId, db).membershipRole.findMany({
+    where: { membershipId: t.membershipId },
+    select: { role: true },
+    orderBy: { role: "asc" }, // enum declaration order
+  });
   if (!membership || !org) return [];
   return [...(org.ownerId === membership.userId ? (["owner"] as const) : []), ...rows.map((r) => r.role)];
 }

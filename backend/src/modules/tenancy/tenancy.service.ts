@@ -56,15 +56,17 @@ export const memberSelect = { id: true, userId: true, title: true, createdAt: tr
 type MemberRow = { id: string; userId: string; title: string | null; createdAt: Date };
 
 export async function memberViews(organisationId: string, rows: MemberRow[], db: Prisma.TransactionClient = prisma) {
-  const [org, users, roleRows] = await Promise.all([
-    db.organisation.findUniqueOrThrow({ where: { id: organisationId }, select: { ownerId: true } }),
-    db.user.findMany({ where: { id: { in: rows.map((m) => m.userId) } }, select: { id: true, displayName: true } }),
-    forTenant(organisationId, db).membershipRole.findMany({
-      where: { membershipId: { in: rows.map((m) => m.id) } },
-      select: { membershipId: true, role: true },
-      orderBy: { role: "asc" },
-    }),
-  ]);
+  // Sequential, not Promise.all: `db` may be a transaction client (one connection).
+  const org = await db.organisation.findUniqueOrThrow({ where: { id: organisationId }, select: { ownerId: true } });
+  const users = await db.user.findMany({
+    where: { id: { in: rows.map((m) => m.userId) } },
+    select: { id: true, displayName: true },
+  });
+  const roleRows = await forTenant(organisationId, db).membershipRole.findMany({
+    where: { membershipId: { in: rows.map((m) => m.id) } },
+    select: { membershipId: true, role: true },
+    orderBy: { role: "asc" },
+  });
   const names = new Map(users.map((u) => [u.id, u.displayName]));
   return rows.map((m) => {
     const isOwner = org.ownerId === m.userId;

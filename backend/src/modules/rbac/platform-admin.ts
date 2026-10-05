@@ -12,10 +12,8 @@ export async function setPlatformAdmin(email: string, on: boolean, reason: strin
     if (on) {
       // Lock the user row so a concurrent membership insert (FK share lock) cannot slip in.
       await tx.$queryRaw`SELECT 1 FROM "User" WHERE "id" = ${target.id}::uuid FOR UPDATE`;
-      const [memberships, owned] = await Promise.all([
-        tx.organisationMembership.count({ where: { userId: target.id } }),
-        tx.organisation.count({ where: { ownerId: target.id } }),
-      ]);
+      const memberships = await tx.organisationMembership.count({ where: { userId: target.id } });
+      const owned = await tx.organisation.count({ where: { ownerId: target.id } });
       if (memberships + owned > 0) {
         throw new Error("Refused: this account belongs to an organisation; use a separate platform account");
       }
