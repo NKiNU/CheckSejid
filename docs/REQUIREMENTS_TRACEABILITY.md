@@ -15,7 +15,7 @@ Rules:
 |---|---|---|---|---|
 | AUTH-001 | Passwords are securely hashed (argon2id per ADR-009). | architecture/SECURITY_ARCHITECTURE.md; ADR-009 | 01 | `identity.db.test.ts` › register (argon2id hash, never returned) |
 | AUTH-002 | Protected endpoints require authentication. | architecture/SECURITY_ARCHITECTURE.md | 01 | `auth.test.ts` › requireAuth (GET /me); `identity.db.test.ts` › protected access |
-| AUTH-003 | Authorisation is independent of frontend visibility. | architecture/SECURITY_ARCHITECTURE.md | 01, All | `auth.test.ts` › access token carries only the user id |
+| AUTH-003 | Authorisation is independent of frontend visibility. | architecture/SECURITY_ARCHITECTURE.md | 01, All | `auth.test.ts` › access token carries only the user id; 03: `rbac.db.test.ts` › a role change takes effect on the next request |
 | AUTH-004 | Login and refresh endpoints are rate limited. | ADR-009; architecture/SECURITY_ARCHITECTURE.md | 01 | `auth.test.ts` › rate limiting; `trust-proxy.test.ts` |
 | AUTH-005 | Access tokens are short-lived (~15 min) Bearer tokens held in frontend memory, not localStorage. Refresh tokens are opaque values in an httpOnly, Secure, SameSite cookie scoped to the refresh endpoint, and only their hash is stored. | ADR-009 | 01 | `auth.test.ts` › tokens; `identity.db.test.ts` › cookie flags; `frontend/src/features/identity/api.test.ts` |
 | AUTH-006 | A refresh token is rotated on every use. Reuse of a rotated token revokes the whole token family. | ADR-009 | 01 | `identity.db.test.ts` › refresh rotation (incl. reuse + concurrent refresh) |
@@ -55,20 +55,20 @@ Rules:
 
 | ID | Requirement | Source | Phase | Tests |
 |---|---|---|---|---|
-| RBAC-001 | Initial roles: owner, admin, treasurer, committee, staff. | architecture/ROLE_PERMISSION_MATRIX.md | 03 | |
-| RBAC-002 | Roles are collections of permissions. Checks are made against permission keys (e.g. `finance.approve`), not role names. | architecture/ROLE_PERMISSION_MATRIX.md | 03 | |
-| RBAC-003 | Sensitive actions are denied server-side without the required permission. | architecture/ROLE_PERMISSION_MATRIX.md; PHASE_03 acceptance | 03, All | |
-| RBAC-004 | Permissions and subscription entitlements are separate checks, and both may be required. | saas/FEATURE_ENTITLEMENTS.md; CLAUDE.md | 03, 11 | |
-| RBAC-005 | Permission keys are defined in the backend and exposed to the frontend through the API. | ADR-010 | 03 | |
-| RBAC-006 | Platform administration is separate from tenant financial authority. | product/USER_PERSONAS.md | 03 | |
-| RBAC-007 | The permission-key catalogue in ADR-015 is canonical; keys are added only by amending ADR-015. | ADR-015 | 03, All | |
-| RBAC-008 | Exactly one owner per organisation; ownership changes only by atomic, audited transfer. | ADR-015 §6 | 03 | |
-| RBAC-009 | No self-escalation: nobody changes their own roles, and an actor grants only roles whose permissions they hold. | ADR-015 §6 | 03 | |
-| RBAC-010 | Permission checks fail closed (unknown key, missing or foreign membership → deny). | ADR-015 §6 | 03, All | |
-| RBAC-011 | Every role change is audited (actor, target, before/after, timestamp). | ADR-015 §6; ADR-013 | 03 | |
-| RBAC-012 | Platform Administrator is a DB flag set only out of band; it holds no tenant permissions and has no tenant data access in MVP; platform actions are audited. | ADR-015 §5 | 03, 04, 11 | |
-| RBAC-013 | A non-owner member may leave an organisation; the owner must transfer ownership first. | ADR-015 §6 rule 7 | 03 | |
-| RBAC-014 | `finance.approve` is held by owner and treasurer only. | ADR-015 §2 (confirmed by product owner) | 03, 08 | |
+| RBAC-001 | Initial roles: owner, admin, treasurer, committee, staff. | architecture/ROLE_PERMISSION_MATRIX.md | 03 | `permissions.test.ts` › the five fixed roles |
+| RBAC-002 | Roles are collections of permissions. Checks are made against permission keys (e.g. `finance.approve`), not role names. | architecture/ROLE_PERMISSION_MATRIX.md | 03 | `permissions.test.ts` › each role holds exactly the ADR-015 §2 keys (parsed from the ADR at test time) |
+| RBAC-003 | Sensitive actions are denied server-side without the required permission. | architecture/ROLE_PERMISSION_MATRIX.md; PHASE_03 acceptance | 03, All | `rbac.db.test.ts` › permission matrix on routes (6 routes × 5 roles) |
+| RBAC-004 | Permissions and subscription entitlements are separate checks, and both may be required. | saas/FEATURE_ENTITLEMENTS.md; CLAUDE.md | 03, 11 | Seam only (03): `requirePermission` never reads plan/subscription. Entitlement guard + tests in Phase 11. |
+| RBAC-005 | Permission keys are defined in the backend and exposed to the frontend through the API. | ADR-010 | 03 | `rbac.db.test.ts` › GET /orgs/:orgId/me/permissions |
+| RBAC-006 | Platform administration is separate from tenant financial authority. | product/USER_PERSONAS.md | 03 | `permissions.test.ts` › platform keys held by no tenant role; `rbac.db.test.ts` › Platform Administrator has no tenant access |
+| RBAC-007 | The permission-key catalogue in ADR-015 is canonical; keys are added only by amending ADR-015. | ADR-015 | 03, All | `permissions.test.ts` › exactly the 23 tenant keys; `rbac.db.test.ts` › every mutating /orgs/:orgId route declares a permission |
+| RBAC-008 | Exactly one owner per organisation; ownership changes only by atomic, audited transfer. | ADR-015 §6 | 03 | `rbac.db.test.ts` › single owner; ownership transfer (incl. concurrent transfers); DB trigger `rbac_owner_is_member` |
+| RBAC-009 | No self-escalation: nobody changes their own roles, and an actor grants only roles whose permissions they hold. | ADR-015 §6 | 03 | `rbac.db.test.ts` › no self-escalation; `permissions.test.ts` › subset rule |
+| RBAC-010 | Permission checks fail closed (unknown key, missing or foreign membership → deny). | ADR-015 §6 | 03, All | `rbac.db.test.ts` › role in org A grants nothing in org B; member with no roles cannot read; composite FK; `permissions.test.ts` › unknown roles grant nothing |
+| RBAC-011 | Every role change is audited (actor, target, before/after, timestamp). | ADR-015 §6; ADR-013 | 03 | `rbac.db.test.ts` › audit rows on grant/remove/leave/transfer |
+| RBAC-012 | Platform Administrator is a DB flag set only out of band; it holds no tenant permissions and has no tenant data access in MVP; platform actions are audited. | ADR-015 §5 | 03, 04, 11 | `rbac.db.test.ts` › Platform Administrator (guard re-reads flag; CLI grant/revoke with required reason; refused for accounts with memberships; not settable via API) |
+| RBAC-013 | A non-owner member may leave an organisation; the owner must transfer ownership first. | ADR-015 §6 rule 7 | 03 | `rbac.db.test.ts` › any non-owner may leave; the owner cannot leave |
+| RBAC-014 | `finance.approve` is held by owner and treasurer only. | ADR-015 §2 (confirmed by product owner) | 03, 08 | `permissions.test.ts` › finance.approve is held by owner and treasurer only |
 
 ## Public platform and discovery
 
