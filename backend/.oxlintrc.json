@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      { "patterns": [{ "group": ["**/test/*"], "message": "src/test/ is test-only; import it only from *.test.ts files." }] }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "src/test/**"],
+      "rules": { "no-restricted-imports": "off" }
+    }
+  ]
+}

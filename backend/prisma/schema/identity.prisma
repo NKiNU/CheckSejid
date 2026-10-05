@@ -9,7 +9,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens     RefreshToken[]
+  ownedOrganisation Organisation?            @relation("OrganisationOwner")
+  memberships       OrganisationMembership[]
 }
 
 // Only the SHA-256 hash of the opaque refresh token is stored (ADR-009).

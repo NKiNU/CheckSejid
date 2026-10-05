@@ -22,7 +22,7 @@ export const rateLimitStores = {
   register: new MemoryStore(),
   session: new MemoryStore(),
 };
-const limiter = (limit: number, store: MemoryStore, keyGenerator?: (req: Request) => string) =>
+export const limiter = (limit: number, store: MemoryStore, keyGenerator?: (req: Request) => string) =>
   rateLimit({
     windowMs: 15 * 60 * 1000,
     limit,

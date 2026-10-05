@@ -1,0 +1,32 @@
+// Phase 02 — Organisation tenancy.
+// Organisation is the tenant root (TENANT-001): it is keyed by its own id rather than
+// carrying an organisationId. OrganisationMembership is tenant-owned (TENANT-002/008).
+
+model Organisation {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  // ORG-002 / ADR-006: a management user actively manages one organisation; the unique
+  // constraint enforces "one owned organisation per user" in the database.
+  // SPEC-GAP: roles arrive in Phase 03. Ownership is this column only, a placeholder
+  // that Phase 03 may map to an Owner role; no ownership transfer yet.
+  ownerId   String   @unique @db.Uuid
+  owner     User     @relation("OrganisationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships OrganisationMembership[]
+}
+
+// Store membership only (ORG-003). Roles/permissions are Phase 03.
+model OrganisationMembership {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organisationId, userId])
+  @@index([userId])
+}
