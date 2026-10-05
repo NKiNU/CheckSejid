@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { MembersPanel } from '../rbac/MembersPanel.tsx'
 import * as api from './api.ts'
 
 // Minimal Phase 02 UI: list my organisations, switch the current one, create one.
 // The current organisation is loaded through the tenant-scoped GET /orgs/:id, so the
 // server decides access; the client only remembers which id was picked.
-export function OrganisationsPanel() {
+export function OrganisationsPanel({ userId }: { userId: string }) {
   const [orgs, setOrgs] = useState<api.Organisation[]>([])
   const [current, setCurrent] = useState<api.Organisation | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +62,17 @@ export function OrganisationsPanel() {
           Managing <strong>{current.name}</strong>
           {current.isOwner ? ' (owner)' : ''}
         </p>
+      )}
+      {current && (
+        <MembersPanel
+          key={current.id}
+          orgId={current.id}
+          myUserId={userId}
+          onLeft={() => {
+            setOrgs(orgs.filter((o) => o.id !== current.id))
+            setCurrent(null)
+          }}
+        />
       )}
       {!orgs.some((o) => o.isOwner) && (
         <form onSubmit={create}>

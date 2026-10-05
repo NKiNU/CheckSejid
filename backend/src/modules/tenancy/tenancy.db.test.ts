@@ -113,6 +113,8 @@ describe.skipIf(!hasDb)("tenancy (database)", () => {
           userId: a.userId,
           displayName: "Test User",
           isOwner: true,
+          roles: ["owner"], // Phase 03
+          title: null, // Phase 03
           createdAt: expect.any(String),
         },
       ]);

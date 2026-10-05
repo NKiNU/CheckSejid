@@ -23,7 +23,7 @@ export function IdentityPage() {
     <main>
       <h1>Welcome, {user.displayName}</h1>
       <p>Signed in as {user.email}.</p>
-      <OrganisationsPanel />
+      <OrganisationsPanel userId={user.id} />
       <button
         type="button"
         onClick={async () => {

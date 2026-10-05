@@ -7,26 +7,34 @@ model Organisation {
   name      String
   // ORG-002 / ADR-006: a management user actively manages one organisation; the unique
   // constraint enforces "one owned organisation per user" in the database.
-  // SPEC-GAP: roles arrive in Phase 03. Ownership is this column only, a placeholder
-  // that Phase 03 may map to an Owner role; no ownership transfer yet.
+  // Phase 03 (ADR-015): this column IS the `owner` role. Owner is never stored as a
+  // MembershipRole row (the Role enum has no owner value), so "exactly one owner" (RBAC-008)
+  // holds by construction and changes only through ownership transfer. A deferred constraint
+  // trigger (rbac migration) guarantees the owner is always a member of the organisation.
   ownerId   String   @unique @db.Uuid
   owner     User     @relation("OrganisationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   memberships OrganisationMembership[]
+  auditLogs   AuditLog[]
 }
 
-// Store membership only (ORG-003). Roles/permissions are Phase 03.
+// Store membership only (ORG-003). Roles are MembershipRole rows (rbac.prisma).
 model OrganisationMembership {
   id             String       @id @default(uuid()) @db.Uuid
   organisationId String       @db.Uuid
   organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   userId         String       @db.Uuid
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // ADR-015 §2: free-text display title (e.g. "Nazir", "Imam"). Grants nothing.
+  title          String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  roles MembershipRole[]
+
   @@unique([organisationId, userId])
+  @@unique([id, organisationId]) // target of MembershipRole's tenant-consistent composite FK
   @@index([userId])
 }

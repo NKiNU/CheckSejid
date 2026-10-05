@@ -6,6 +6,9 @@ model User {
   email        String   @unique // normalised to lower case by the service
   passwordHash String // argon2id (AUTH-001)
   displayName  String
+  // Platform Administrator flag (ADR-015 §5, RBAC-012). Set only out of band by
+  // src/modules/rbac/platform-admin.cli.ts, never through any API.
+  isPlatformAdmin Boolean @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

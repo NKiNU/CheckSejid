@@ -1,0 +1,57 @@
+// Phase 03 — RBAC (ADR-015). The role → permission mapping is a backend constant
+// (src/modules/rbac/permissions.ts), not data: only role keys are stored.
+
+// Assignable roles. `owner` is deliberately absent: it is Organisation.ownerId and changes
+// only by ownership transfer (ADR-015 §6 rules 1–3).
+enum Role {
+  admin
+  treasurer
+  committee
+  staff
+}
+
+// Tenant-owned (TENANT-008). The composite FK (membershipId, organisationId) makes a role row
+// pointing at a membership of another organisation impossible in the database.
+model MembershipRole {
+  id             String                 @id @default(uuid()) @db.Uuid
+  organisationId String                 @db.Uuid
+  membershipId   String                 @db.Uuid
+  membership     OrganisationMembership @relation(fields: [membershipId, organisationId], references: [id, organisationId], onDelete: Cascade)
+  role           Role
+  createdAt      DateTime               @default(now())
+
+  @@unique([membershipId, role])
+  @@index([organisationId])
+}
+
+// Tenant audit trail (RBAC-011). Generic so Phase 08 finance audit can reuse it:
+// action + target (type/id) + before/after snapshots. No API writes or edits rows (FIN-015);
+// services insert them in the same transaction as the change they record.
+model AuditLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  actorUserId    String       @db.Uuid // no FK: history outlives the actor's membership
+  action         String // e.g. "membership.roles.change"
+  targetType     String // e.g. "membership"
+  targetId       String       @db.Uuid
+  before         Json?
+  after          Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([organisationId, createdAt])
+}
+
+// Platform audit trail (ADR-015 §5, RBAC-012). Global: platform actions are not tenant data.
+// actorUserId is null for out-of-band actions (the CLI).
+model PlatformAuditLog {
+  id                   String   @id @default(uuid()) @db.Uuid
+  actorUserId          String?  @db.Uuid
+  action               String // e.g. "platform_admin.grant"
+  targetUserId         String?  @db.Uuid
+  targetOrganisationId String?  @db.Uuid
+  reason               String?
+  createdAt            DateTime @default(now())
+
+  @@index([createdAt])
+}

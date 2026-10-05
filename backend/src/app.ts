@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import { errorHandler, notFound } from "./errors.ts";
 import { identityRouter } from "./modules/identity/identity.routes.ts";
+import { rbacRouter } from "./modules/rbac/rbac.routes.ts";
 import { tenancyRouter } from "./modules/tenancy/tenancy.routes.ts";
 
 export const app = express();
@@ -21,6 +22,7 @@ app.get("/health", (_req, res) => {
 
 app.use(identityRouter);
 app.use(tenancyRouter);
+app.use(rbacRouter);
 
 app.use(notFound);
 app.use(errorHandler);
