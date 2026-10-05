@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { OrganisationsPanel } from '../tenancy/OrganisationsPanel.tsx'
 import * as api from './api.ts'
 
 // Minimal Phase 01 UI: register/login, and an authenticated page whose data comes
@@ -22,6 +23,7 @@ export function IdentityPage() {
     <main>
       <h1>Welcome, {user.displayName}</h1>
       <p>Signed in as {user.email}.</p>
+      <OrganisationsPanel />
       <button
         type="button"
         onClick={async () => {
