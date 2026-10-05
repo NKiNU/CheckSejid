@@ -15,6 +15,8 @@ import { tenancyRateLimitStores } from "../tenancy/tenancy.routes.ts";
 import { PERMISSIONS, ROLES, type AssignableRole, type Permission, type RoleKey } from "./permissions.ts";
 import { setPlatformAdmin } from "./platform-admin.ts";
 import { hasPermission, requirePlatformAdmin } from "./rbac.ts";
+import { rbacRateLimitStores } from "./rbac.routes.ts";
+import { addMember } from "./rbac.service.ts";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 if (!hasDb) console.warn("rbac.db.test: DATABASE_URL not set — DB integration tests SKIPPED");
@@ -38,7 +40,7 @@ const patch = (org: TestTenant, who: { token: string }, membershipId: string, bo
 
 describe.skipIf(!hasDb)("rbac (database)", () => {
   beforeEach(async () => {
-    await Promise.all(Object.values(tenancyRateLimitStores).map((s) => s.resetAll()));
+    await Promise.all([...Object.values(tenancyRateLimitStores), ...Object.values(rbacRateLimitStores)].map((s) => s.resetAll()));
   });
   afterAll(async () => {
     await prisma.$disconnect();
@@ -229,6 +231,15 @@ describe.skipIf(!hasDb)("rbac (database)", () => {
       expect([p.status, p.body.error.code]).toEqual([409, "OWNER_PROTECTED"]);
     });
 
+    it("only the owner may set the owner's title", async () => {
+      const org = await createTenant();
+      const admin = await member(org, ["admin"]);
+      const t = await patch(org, admin, org.membershipId, { title: "Bekas Pengerusi" });
+      expect([t.status, t.body.error.code]).toEqual([409, "OWNER_PROTECTED"]);
+      expect(await auditRows(org.organisationId, "membership.update")).toHaveLength(0);
+      await patch(org, org, org.membershipId, { title: "Pengerusi" }).expect(200);
+    });
+
     it("the database refuses to delete the owner's membership (deferred trigger)", async () => {
       const org = await createTenant();
       await expect(prisma.organisationMembership.delete({ where: { id: org.membershipId } })).rejects.toThrow(/owner must be a member/);
@@ -415,6 +426,40 @@ describe.skipIf(!hasDb)("rbac (database)", () => {
     });
   });
 
+  describe("service-level re-checks and rate limits", () => {
+    it("addMember re-checks members.manage inside its transaction (demoted or role-less actor)", async () => {
+      const org = await createTenant();
+      for (const roles of [["committee"], ["staff"], []] as AssignableRole[][]) {
+        const actor = await member(org, roles);
+        const u = await createUser();
+        for (const grant of [["staff"], []] as AssignableRole[][]) {
+          await expect(addMember({ organisationId: org.organisationId, membershipId: actor.membershipId, userId: actor.userId }, u.email, grant))
+            .rejects.toMatchObject({ status: 403, code: "FORBIDDEN" });
+        }
+        expect(await prisma.organisationMembership.count({ where: { userId: u.userId } })).toBe(0);
+      }
+      // an admin removed mid-flight: their stale tenant context no longer grants anything
+      const admin = await member(org, ["admin"]);
+      await request(app).delete(`/orgs/${org.organisationId}/members/${admin.membershipId}`).set(as(org)).expect(204);
+      const u = await createUser();
+      await expect(addMember({ organisationId: org.organisationId, membershipId: admin.membershipId, userId: admin.userId }, u.email, []))
+        .rejects.toMatchObject({ status: 403 });
+    });
+
+    it("member mutations are rate-limited per user", async () => {
+      const org = await createTenant();
+      const staff = await member(org, ["staff"]);
+      const statuses: number[] = [];
+      for (let i = 0; i < 61; i++) statuses.push((await patch(org, org, staff.membershipId, { title: `t${i % 2}` })).status);
+      expect(statuses.slice(0, 60).every((s) => s === 200)).toBe(true);
+      expect(statuses[60]).toBe(429);
+      // shared across the member-mutation routes
+      expect((await request(app).post(`/orgs/${org.organisationId}/leave`).set(as(org))).status).toBe(429);
+      expect((await request(app).post(`/orgs/${org.organisationId}/ownership/transfer`).set(as(org)).send({ membershipId: staff.membershipId })).status).toBe(429);
+      expect((await request(app).delete(`/orgs/${org.organisationId}/members/${staff.membershipId}`).set(as(org))).status).toBe(429);
+    });
+  });
+
   // ADR-015 Consequence: "a test that every mutating tenant route declares a permission key".
   it("every mutating /orgs/:orgId route declares a permission (self-scoped routes allow-listed)", () => {
     const selfScoped = new Set(["POST /orgs/:orgId/leave"]);
@@ -448,24 +493,44 @@ describe.skipIf(!hasDb)("rbac (database)", () => {
       expect((await request(probe).get("/platform/probe").set(as(u))).status).toBe(403);
       await setPlatformAdmin(u.email.toUpperCase(), true, "ops on-call");
       await request(probe).get("/platform/probe").set(as(u)).expect(200);
-      await setPlatformAdmin(u.email, false);
+      await setPlatformAdmin(u.email, false, "rotation ended");
       expect((await request(probe).get("/platform/probe").set(as(u))).status).toBe(403);
       const rows = await prisma.platformAuditLog.findMany({ where: { targetUserId: u.userId }, orderBy: { createdAt: "asc" } });
       expect(rows.map((r) => [r.action, r.actorUserId, r.reason])).toEqual([
         ["platform_admin.grant", null, "ops on-call"],
-        ["platform_admin.revoke", null, null],
+        ["platform_admin.revoke", null, "rotation ended"],
       ]);
     });
 
     it("holds no tenant permissions and no tenant data access", async () => {
       const victim = await createTenant();
       const u = await createUser();
-      await setPlatformAdmin(u.email, true);
+      await setPlatformAdmin(u.email, true, "test");
       await expectCrossTenantDenied(u, [
         { method: "get", path: `/orgs/${victim.organisationId}` },
         { method: "get", path: `/orgs/${victim.organisationId}/members` },
         { method: "get", path: `/orgs/${victim.organisationId}/me/permissions` },
       ]);
+    });
+
+    it("a reason is required", async () => {
+      const u = await createUser();
+      for (const reason of ["", "   ", undefined as unknown as string]) {
+        await expect(setPlatformAdmin(u.email, true, reason)).rejects.toThrow(/reason/);
+      }
+      expect((await prisma.user.findUniqueOrThrow({ where: { id: u.userId } })).isPlatformAdmin).toBe(false);
+      expect(await prisma.platformAuditLog.count({ where: { targetUserId: u.userId } })).toBe(0);
+    });
+
+    it("refuses to grant the flag to an account that owns or belongs to an organisation", async () => {
+      const owner = await createTenant();
+      const m = await member(owner, ["staff"]);
+      const ownerEmail = (await prisma.user.findUniqueOrThrow({ where: { id: owner.userId } })).email;
+      for (const email of [ownerEmail, m.email]) {
+        await expect(setPlatformAdmin(email, true, "x")).rejects.toThrow(/separate platform account/);
+      }
+      const flags = await prisma.user.findMany({ where: { id: { in: [owner.userId, m.userId] } }, select: { isPlatformAdmin: true } });
+      expect(flags.every((f) => !f.isPlatformAdmin)).toBe(true);
     });
 
     it("the flag cannot be set through the API", async () => {
@@ -486,9 +551,11 @@ describe.skipIf(!hasDb)("rbac (database)", () => {
         promisify(execFile)("npx", ["tsx", "src/modules/rbac/platform-admin.cli.ts", ...args], { env: process.env });
       expect((await run("grant", u.email, "test")).stdout).toContain("isPlatformAdmin=true");
       expect((await prisma.user.findUniqueOrThrow({ where: { id: u.userId } })).isPlatformAdmin).toBe(true);
-      await run("revoke", u.email);
+      await expect(run("revoke", u.email)).rejects.toThrow(); // reason required
+      expect((await prisma.user.findUniqueOrThrow({ where: { id: u.userId } })).isPlatformAdmin).toBe(true);
+      await run("revoke", u.email, "done");
       expect((await prisma.user.findUniqueOrThrow({ where: { id: u.userId } })).isPlatformAdmin).toBe(false);
-      await expect(run("make-admin", u.email)).rejects.toThrow();
+      await expect(run("make-admin", u.email, "x")).rejects.toThrow();
     });
   });
 });

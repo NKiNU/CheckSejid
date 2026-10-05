@@ -5,9 +5,9 @@
 import { Prisma } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
-import { getMember, memberViews } from "../tenancy/tenancy.service.ts";
+import { getMember, memberSelect, memberViews } from "../tenancy/tenancy.service.ts";
 import { forTenant } from "../tenancy/tenant.ts";
-import { canGrant, type AssignableRole } from "./permissions.ts";
+import { ASSIGNABLE_ROLES, canGrant, type AssignableRole } from "./permissions.ts";
 import { audit, effectivePermissions, forbidden, membershipRoles, roleNotGrantable, type TenantContext } from "./rbac.ts";
 
 export type Actor = TenantContext & { userId: string };
@@ -40,8 +40,47 @@ async function actorPermissions(tx: Tx, actor: Actor) {
   return perms;
 }
 
+// SPEC-GAP: no invitation flow is specified. Minimal: a members.manage holder adds an existing
+// user by email. Telling them an email has no account is accepted account enumeration, limited
+// to members.manage holders and rate-limited.
+// SPEC-GAP: ADR-015 gives no default role for a new member. Default `staff` (least-privileged
+// fixed role); the subset rule (RBAC-009) applies to the roles granted here.
+export async function addMember(actor: Actor, email: string, roles: AssignableRole[]) {
+  const { organisationId } = actor;
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) throw new HttpError(404, "USER_NOT_FOUND", "No account with this email");
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await lockedOrg(tx, organisationId);
+      if (!canGrant(await actorPermissions(tx, actor), roles)) throw roleNotGrantable();
+      const db = forTenant(organisationId, tx);
+      const m = await db.organisationMembership.create({
+        data: { userId: user.id } as Prisma.OrganisationMembershipUncheckedCreateInput, // organisationId stamped by forTenant
+        select: memberSelect,
+      });
+      await db.membershipRole.createMany({
+        data: roles.map((role) => ({ membershipId: m.id, role })) as Prisma.MembershipRoleCreateManyInput[],
+      });
+      await audit(tx, organisationId, {
+        actorUserId: actor.userId,
+        action: "membership.add",
+        targetType: "membership",
+        targetId: m.id,
+        after: { userId: user.id, roles },
+      });
+      return (await memberViews(organisationId, [m], tx))[0]!;
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      throw new HttpError(409, "ALREADY_MEMBER", "User is already a member");
+    }
+    throw e;
+  }
+}
+
 // PATCH member. `roles` is the complete new set of assignable roles. `title` grants nothing, so
-// any members.manage holder may set it on any member, including themselves and the owner.
+// any members.manage holder may set it on any member, including themselves; only the owner may
+// set the owner's title.
 export async function updateMember(
   actor: Actor,
   membershipId: string,
@@ -70,6 +109,7 @@ export async function updateMember(
       });
     }
     if (change.title !== undefined) {
+      if (before.userId === org.ownerId && actor.userId !== org.ownerId) throw ownerProtected();
       await forTenant(organisationId, tx).organisationMembership.update({
         where: { id: membershipId },
         data: { title: change.title },
@@ -146,6 +186,9 @@ export async function transferOwnership(actor: Actor, membershipId: string) {
       if (org.ownerId !== actor.userId) throw forbidden();
       const m = await target(tx, organisationId, membershipId);
       if (m.userId === actor.userId) throw new HttpError(409, "ALREADY_OWNER", "You already own this organisation");
+      // Computed before any write: stored roles + admin (owner is the column, not a role row).
+      const kept = await membershipRoles(actor, tx);
+      const previousOwnerRoles = ASSIGNABLE_ROLES.filter((r) => r === "admin" || kept.includes(r));
       await tx.organisation.update({ where: { id: organisationId }, data: { ownerId: m.userId } });
       await forTenant(organisationId, tx).membershipRole.createMany({
         data: [{ membershipId: actor.membershipId, role: "admin" }] as Prisma.MembershipRoleCreateManyInput[],
@@ -157,7 +200,7 @@ export async function transferOwnership(actor: Actor, membershipId: string) {
         targetType: "organisation",
         targetId: organisationId,
         before: { ownerMembershipId: actor.membershipId },
-        after: { ownerMembershipId: m.id, previousOwnerRoles: await membershipRoles(actor, tx) },
+        after: { ownerMembershipId: m.id, previousOwnerRoles },
       });
       return memberViews(organisationId, await membersById(tx, organisationId, [actor.membershipId, m.id]), tx);
     });

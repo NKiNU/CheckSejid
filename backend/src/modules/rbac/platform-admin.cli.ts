@@ -1,12 +1,13 @@
 // Out-of-band Platform Administrator management (ADR-015 §5). Run on the server:
 //   npm run platform-admin -- grant user@example.com "reason"
 //   npm run platform-admin -- revoke user@example.com "reason"
+// The reason is required and recorded in the platform audit log.
 import { prisma } from "../../db.ts";
 import { setPlatformAdmin } from "./platform-admin.ts";
 
 const [cmd, email, reason] = process.argv.slice(2);
-if ((cmd !== "grant" && cmd !== "revoke") || !email) {
-  console.error("usage: platform-admin grant|revoke <email> [reason]");
+if ((cmd !== "grant" && cmd !== "revoke") || !email || !reason?.trim()) {
+  console.error("usage: platform-admin grant|revoke <email> <reason>");
   process.exit(2);
 }
 try {

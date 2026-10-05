@@ -5,6 +5,7 @@ import { requireAuth } from "../identity/auth.ts";
 import { limiter } from "../identity/identity.routes.ts";
 import { requirePermission } from "../rbac/rbac.ts";
 import { rolesBody } from "../rbac/rbac.routes.ts";
+import { addMember } from "../rbac/rbac.service.ts";
 import { requireTenant } from "./tenant.ts";
 import * as tenancy from "./tenancy.service.ts";
 
@@ -52,6 +53,6 @@ tenancyRouter.post(
   requirePermission("members.manage"),
   async (req, res) => {
     const { email, roles } = addMemberBody.parse(req.body);
-    res.status(201).json({ member: await tenancy.addMember({ ...req.tenant!, userId: req.auth!.userId }, email, roles) });
+    res.status(201).json({ member: await addMember({ ...req.tenant!, userId: req.auth!.userId }, email, roles) });
   },
 );

@@ -1,6 +1,8 @@
 import { Router, type Request } from "express";
+import { MemoryStore } from "express-rate-limit";
 import { z } from "zod";
 import { requireAuth } from "../identity/auth.ts";
+import { limiter } from "../identity/identity.routes.ts";
 import { requireTenant } from "../tenancy/tenant.ts";
 import { PERMISSIONS, permissionsOf, ROLES, type AssignableRole } from "./permissions.ts";
 import { membershipRoles, requirePermission } from "./rbac.ts";
@@ -29,6 +31,12 @@ const memberId = (req: Request) => {
 export const rbacRouter = Router();
 const tenant = [requireAuth, requireTenant];
 
+// SPEC-GAP: no numbers specified. Per authenticated user, 15-min window, shared by all member
+// mutations here (PATCH/DELETE member, leave, transfer). ponytail: in-memory, as identity's limits.
+export const rbacRateLimitStores = { memberChange: new MemoryStore() };
+const memberChangeLimit = limiter(60, rbacRateLimitStores.memberChange, (req) => `user:${req.auth!.userId}`);
+const mutating = [requireAuth, memberChangeLimit, requireTenant];
+
 // RBAC-005: the caller's effective keys in this organisation, for hiding UI only (AUTH-003).
 rbacRouter.get("/orgs/:orgId/me/permissions", ...tenant, async (req, res) => {
   const roles = await membershipRoles(req.tenant!);
@@ -36,25 +44,25 @@ rbacRouter.get("/orgs/:orgId/me/permissions", ...tenant, async (req, res) => {
   res.json({ roles, permissions: PERMISSIONS.filter((p) => held.has(p)) });
 });
 
-rbacRouter.patch("/orgs/:orgId/members/:membershipId", ...tenant, requirePermission("members.manage"), async (req, res) => {
+rbacRouter.patch("/orgs/:orgId/members/:membershipId", ...mutating, requirePermission("members.manage"), async (req, res) => {
   const id = memberId(req);
   res.json({ member: await rbac.updateMember(actor(req), id, updateMemberBody.parse(req.body)) });
 });
 
-rbacRouter.delete("/orgs/:orgId/members/:membershipId", ...tenant, requirePermission("members.manage"), async (req, res) => {
+rbacRouter.delete("/orgs/:orgId/members/:membershipId", ...mutating, requirePermission("members.manage"), async (req, res) => {
   await rbac.removeMember(actor(req), memberId(req));
   res.status(204).end();
 });
 
 // RBAC-013: self-scoped, so no permission key (declared in the route-declaration test's allow-list).
-rbacRouter.post("/orgs/:orgId/leave", ...tenant, async (req, res) => {
+rbacRouter.post("/orgs/:orgId/leave", ...mutating, async (req, res) => {
   await rbac.leave(actor(req));
   res.status(204).end();
 });
 
 rbacRouter.post(
   "/orgs/:orgId/ownership/transfer",
-  ...tenant,
+  ...mutating,
   requirePermission("organisation.ownership.transfer"),
   async (req, res) => {
     const { membershipId } = transferBody.parse(req.body);
