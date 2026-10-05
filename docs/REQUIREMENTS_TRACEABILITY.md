@@ -13,19 +13,19 @@ Rules:
 
 | ID | Requirement | Source | Phase | Tests |
 |---|---|---|---|---|
-| AUTH-001 | Passwords are securely hashed (argon2id per ADR-009). | architecture/SECURITY_ARCHITECTURE.md; ADR-009 | 01 | |
-| AUTH-002 | Protected endpoints require authentication. | architecture/SECURITY_ARCHITECTURE.md | 01 | |
-| AUTH-003 | Authorisation is independent of frontend visibility. | architecture/SECURITY_ARCHITECTURE.md | 01, All | |
-| AUTH-004 | Login and refresh endpoints are rate limited. | ADR-009; architecture/SECURITY_ARCHITECTURE.md | 01 | |
-| AUTH-005 | Access tokens are short-lived (~15 min) Bearer tokens held in frontend memory, not localStorage. Refresh tokens are opaque values in an httpOnly, Secure, SameSite cookie scoped to the refresh endpoint, and only their hash is stored. | ADR-009 | 01 | |
-| AUTH-006 | A refresh token is rotated on every use. Reuse of a rotated token revokes the whole token family. | ADR-009 | 01 | |
-| AUTH-007 | Logout and password change revoke refresh tokens. | ADR-009 | 01 | |
-| AUTH-008 | Tokens identify the user only. Organisation context, roles and permissions are resolved server-side per request and never taken from client-supplied claims. | ADR-009; CLAUDE.md | 01, 02 | |
-| SEC-001 | All input is validated server-side. | CLAUDE.md; architecture/SECURITY_ARCHITECTURE.md; architecture/API_STANDARDS.md | All | |
+| AUTH-001 | Passwords are securely hashed (argon2id per ADR-009). | architecture/SECURITY_ARCHITECTURE.md; ADR-009 | 01 | `identity.db.test.ts` › register (argon2id hash, never returned) |
+| AUTH-002 | Protected endpoints require authentication. | architecture/SECURITY_ARCHITECTURE.md | 01 | `auth.test.ts` › requireAuth (GET /me); `identity.db.test.ts` › protected access |
+| AUTH-003 | Authorisation is independent of frontend visibility. | architecture/SECURITY_ARCHITECTURE.md | 01, All | `auth.test.ts` › access token carries only the user id |
+| AUTH-004 | Login and refresh endpoints are rate limited. | ADR-009; architecture/SECURITY_ARCHITECTURE.md | 01 | `auth.test.ts` › rate limiting; `trust-proxy.test.ts` |
+| AUTH-005 | Access tokens are short-lived (~15 min) Bearer tokens held in frontend memory, not localStorage. Refresh tokens are opaque values in an httpOnly, Secure, SameSite cookie scoped to the refresh endpoint, and only their hash is stored. | ADR-009 | 01 | `auth.test.ts` › tokens; `identity.db.test.ts` › cookie flags; `frontend/src/features/identity/api.test.ts` |
+| AUTH-006 | A refresh token is rotated on every use. Reuse of a rotated token revokes the whole token family. | ADR-009 | 01 | `identity.db.test.ts` › refresh rotation (incl. reuse + concurrent refresh) |
+| AUTH-007 | Logout and password change revoke refresh tokens. | ADR-009 | 01 | Partial (01): logout covered by `identity.db.test.ts` › logout (incl. in-flight rotation race, Postgres-only). Password change not built yet. |
+| AUTH-008 | Tokens identify the user only. Organisation context, roles and permissions are resolved server-side per request and never taken from client-supplied claims. | ADR-009; CLAUDE.md | 01, 02 | 01 part: `auth.test.ts` (token = `sub` only). Phase 02 adds server-side tenant resolution. |
+| SEC-001 | All input is validated server-side. | CLAUDE.md; architecture/SECURITY_ARCHITECTURE.md; architecture/API_STANDARDS.md | All | 01: `auth.test.ts` › validation (server-side) |
 | SEC-002 | Secrets come from environment/secret configuration and are never committed. | architecture/SECURITY_ARCHITECTURE.md; ADR-009; PHASE_00 acceptance | 00, 12 | |
 | SEC-003 | Logs never contain secrets (passwords, tokens, signing keys). | architecture/SECURITY_ARCHITECTURE.md | 01, 12 | |
-| SEC-004 | API responses never expose secrets (e.g. password or token hashes). | architecture/API_STANDARDS.md | 01, All | |
-| SEC-005 | Errors are predictable and consistent across the API. | architecture/API_STANDARDS.md | 00, All | |
+| SEC-004 | API responses never expose secrets (e.g. password or token hashes). | architecture/API_STANDARDS.md | 01, All | 01: `identity.db.test.ts` › register (never returns the hash) |
+| SEC-005 | Errors are predictable and consistent across the API. | architecture/API_STANDARDS.md | 00, All | 01: `errors.ts` envelope `{error:{code,message,details?}}`; `auth.test.ts` |
 | SEC-006 | List endpoints use bounded pagination and filtering. | architecture/API_STANDARDS.md | All | |
 | SEC-007 | File uploads are safe (see ADR-014, Proposed, for the concrete rules). | architecture/SECURITY_ARCHITECTURE.md; finance/EXPENSE_MANAGEMENT.md | 05, 08 | |
 | SEC-008 | Dependencies are maintained (e.g. automated audit in CI). | architecture/SECURITY_ARCHITECTURE.md | 12 | |
