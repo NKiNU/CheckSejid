@@ -19,9 +19,15 @@ const selfChange = () => new HttpError(403, "SELF_CHANGE", "You cannot change yo
 
 type Tx = Prisma.TransactionClient;
 
-async function lockedOrg(tx: Tx, organisationId: string) {
+// ORG-009: the status is re-checked under the lock (requireTenant's read may be stale), so no member
+// write lands on an organisation suspended or archived meanwhile. `leave` opts out: allowed in every state.
+async function lockedOrg(tx: Tx, organisationId: string, anyStatus = false) {
   await tx.$queryRaw`SELECT 1 FROM "Organisation" WHERE "id" = ${organisationId}::uuid FOR UPDATE`;
-  return tx.organisation.findUniqueOrThrow({ where: { id: organisationId }, select: { ownerId: true } });
+  const org = await tx.organisation.findUniqueOrThrow({ where: { id: organisationId }, select: { ownerId: true, status: true } });
+  if (!anyStatus && (org.status === "SUSPENDED" || org.status === "ARCHIVED")) {
+    throw new HttpError(409, "ORGANISATION_NOT_WRITABLE", `Organisation is ${org.status} and cannot be changed this way`);
+  }
+  return org;
 }
 
 async function target(tx: Tx, organisationId: string, membershipId: string) {
@@ -156,7 +162,7 @@ export async function removeMember(actor: Actor, membershipId: string) {
 export async function leave(actor: Actor) {
   const { organisationId, membershipId } = actor;
   await prisma.$transaction(async (tx) => {
-    const org = await lockedOrg(tx, organisationId);
+    const org = await lockedOrg(tx, organisationId, true);
     if (org.ownerId === actor.userId) {
       throw new HttpError(409, "OWNER_MUST_TRANSFER", "Transfer ownership before leaving the organisation");
     }

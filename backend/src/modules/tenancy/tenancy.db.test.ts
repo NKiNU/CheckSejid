@@ -13,6 +13,7 @@ import { createTenant, createUser, expectCrossTenantDenied, type TestTenant } fr
 const hasDb = Boolean(process.env.DATABASE_URL);
 if (!hasDb) console.warn("tenancy.db.test: DATABASE_URL not set — DB integration tests SKIPPED");
 
+const noProfile = { type: null, description: null, contactEmail: null, contactPhone: null, addressLine: null, state: null, country: null, links: null };
 const as = (t: { token: string }) => ({ Authorization: `Bearer ${t.token}` });
 
 function addMember(owner: TestTenant, email: string) {
@@ -34,6 +35,8 @@ describe.skipIf(!hasDb)("tenancy (database)", () => {
         name: "Masjid Al-Falah",
         isOwner: true,
         createdAt: expect.any(String),
+        status: "DRAFT", // Phase 04: new organisations start as DRAFT
+        ...noProfile,
       });
       const m = await prisma.organisationMembership.findUniqueOrThrow({
         where: { organisationId_userId: { organisationId: res.body.organisation.id, userId: u.userId } },
@@ -84,7 +87,7 @@ describe.skipIf(!hasDb)("tenancy (database)", () => {
 
       const mine = await request(app).get("/orgs").set(as(a)).expect(200);
       expect(mine.body.organisations).toEqual([
-        { id: a.organisationId, name: "A", isOwner: true, createdAt: expect.any(String) },
+        { id: a.organisationId, name: "A", isOwner: true, createdAt: expect.any(String), status: "DRAFT", ...noProfile },
       ]);
       const staffOrgs = await request(app).get("/orgs").set(as(staff)).expect(200);
       expect(staffOrgs.body.organisations.map((o: { id: string; isOwner: boolean }) => [o.id, o.isOwner])).toEqual([
@@ -171,7 +174,7 @@ describe.skipIf(!hasDb)("tenancy (database)", () => {
       const a = await createTenant();
       const b = await createTenant();
       const ok = await request(probe).get(`/orgs/${a.organisationId}/probe/anything`).set(as(a)).expect(200);
-      expect(ok.body.tenant).toEqual({ organisationId: a.organisationId, membershipId: a.membershipId });
+      expect(ok.body.tenant).toEqual({ organisationId: a.organisationId, membershipId: a.membershipId, status: "DRAFT" });
       await request(probe).get(`/orgs/${a.organisationId}/probe`).set(as(b)).expect(404);
       await request(probe).get(`/orgs/${a.organisationId}/probe`).expect(401);
     });

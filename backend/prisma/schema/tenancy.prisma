@@ -2,6 +2,25 @@
 // Organisation is the tenant root (TENANT-001): it is keyed by its own id rather than
 // carrying an organisationId. OrganisationMembership is tenant-owned (TENANT-002/008).
 
+// Phase 04 (ADR-016): lifecycle states and profile.
+enum OrganisationStatus {
+  DRAFT
+  ONBOARDING
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+// ORG-007: generic organisation types, not Masjid-only.
+enum OrganisationType {
+  masjid
+  surau
+  madrasah
+  school
+  ngo
+  other
+}
+
 model Organisation {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -15,6 +34,17 @@ model Organisation {
   owner     User     @relation("OrganisationOwner", fields: [ownerId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // ORG-008/009. Changed only by tenancy.service transition(); read by the lifecycle guard.
+  status       OrganisationStatus @default(DRAFT)
+  type         OrganisationType?
+  description  String?
+  contactEmail String?
+  contactPhone String?
+  addressLine  String?
+  state        String?
+  country      String? // ISO 3166-1 alpha-2
+  links        Json? // [{ label, url }], http(s) only, validated at the API
 
   memberships OrganisationMembership[]
   auditLogs   AuditLog[]

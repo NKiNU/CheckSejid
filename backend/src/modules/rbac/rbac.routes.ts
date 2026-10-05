@@ -3,7 +3,7 @@ import { MemoryStore } from "express-rate-limit";
 import { z } from "zod";
 import { requireAuth } from "../identity/auth.ts";
 import { limiter } from "../identity/identity.routes.ts";
-import { requireTenant } from "../tenancy/tenant.ts";
+import { requireTenant, requireWritableOrg } from "../tenancy/tenant.ts";
 import { PERMISSIONS, permissionsOf, ROLES, type AssignableRole } from "./permissions.ts";
 import { membershipRoles, requirePermission } from "./rbac.ts";
 import * as rbac from "./rbac.service.ts";
@@ -44,12 +44,12 @@ rbacRouter.get("/orgs/:orgId/me/permissions", ...tenant, async (req, res) => {
   res.json({ roles, permissions: PERMISSIONS.filter((p) => held.has(p)) });
 });
 
-rbacRouter.patch("/orgs/:orgId/members/:membershipId", ...mutating, requirePermission("members.manage"), async (req, res) => {
+rbacRouter.patch("/orgs/:orgId/members/:membershipId", ...mutating, requirePermission("members.manage"), requireWritableOrg, async (req, res) => {
   const id = memberId(req);
   res.json({ member: await rbac.updateMember(actor(req), id, updateMemberBody.parse(req.body)) });
 });
 
-rbacRouter.delete("/orgs/:orgId/members/:membershipId", ...mutating, requirePermission("members.manage"), async (req, res) => {
+rbacRouter.delete("/orgs/:orgId/members/:membershipId", ...mutating, requirePermission("members.manage"), requireWritableOrg, async (req, res) => {
   await rbac.removeMember(actor(req), memberId(req));
   res.status(204).end();
 });
@@ -64,6 +64,7 @@ rbacRouter.post(
   "/orgs/:orgId/ownership/transfer",
   ...mutating,
   requirePermission("organisation.ownership.transfer"),
+  requireWritableOrg,
   async (req, res) => {
     const { membershipId } = transferBody.parse(req.body);
     res.json({ members: await rbac.transferOwnership(actor(req), membershipId) });

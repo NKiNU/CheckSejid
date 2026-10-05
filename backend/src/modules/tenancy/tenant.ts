@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import { z } from "zod";
-import { Prisma } from "../../../generated/prisma/client.ts";
+import { Prisma, type OrganisationStatus } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
 
@@ -8,13 +8,15 @@ declare global {
   namespace Express {
     interface Request {
       // Set by requireTenant from the database, never from client input (TENANT-003/004, AUTH-008).
-      tenant?: { organisationId: string; membershipId: string };
+      tenant?: { organisationId: string; membershipId: string; status: OrganisationStatus };
     }
   }
 }
 
 // One response for unknown, malformed and foreign organisations, so ids cannot be probed.
 export const orgNotFound = () => new HttpError(404, "ORGANISATION_NOT_FOUND", "Organisation not found");
+
+export type OrgStatus = OrganisationStatus;
 
 const uuid = z.uuid();
 
@@ -25,12 +27,34 @@ export const requireTenant: RequestHandler = async (req, _res, next) => {
   if (!req.auth || typeof orgId !== "string" || !uuid.safeParse(orgId).success) return next(orgNotFound());
   const membership = await prisma.organisationMembership.findUnique({
     where: { organisationId_userId: { organisationId: orgId, userId: req.auth.userId } },
-    select: { id: true, organisationId: true },
+    select: { id: true, organisationId: true, organisation: { select: { status: true } } },
   });
   if (!membership) return next(orgNotFound());
-  req.tenant = { organisationId: membership.organisationId, membershipId: membership.id };
+  req.tenant = { organisationId: membership.organisationId, membershipId: membership.id, status: membership.organisation.status };
   next();
 };
+
+// ORG-009: the lifecycle guard, separate from permissions and entitlements (ADR-016 §2). Chain after
+// requireTenant. The status is read once per request, so it can be stale: member writes re-check it
+// under the organisation row lock (rbac.service lockedOrg), and updateProfile's update is conditional on it.
+export function requireOrgStatus(...allowed: OrgStatus[]): RequestHandler {
+  const guard: RequestHandler = (req, _res, next) => {
+    if (!req.tenant) return next(orgNotFound()); // mounted without requireTenant: fail closed
+    next(
+      allowed.includes(req.tenant.status)
+        ? undefined
+        : new HttpError(409, "ORGANISATION_NOT_WRITABLE", `Organisation is ${req.tenant.status} and cannot be changed this way`),
+    );
+  };
+  // Lets the route-declaration test find which routes are lifecycle-guarded.
+  return Object.assign(guard, { lifecycle: allowed.join(",") });
+}
+
+// Tenant writes: blocked once SUSPENDED or ARCHIVED. Self-leave and tenant archive are exempt.
+export const requireWritableOrg = requireOrgStatus("DRAFT", "ONBOARDING", "ACTIVE");
+// Phases 06-08: mount module routers behind this (hub, operations, finance need an ACTIVE organisation).
+//   app.use("/orgs/:orgId/<module>", requireAuth, requireTenant, requireActiveOrg, moduleRouter)
+export const requireActiveOrg = requireOrgStatus("ACTIVE");
 
 // ---------------------------------------------------------------------------------------------
 // forTenant — the tenant-scoped data-access path (ADR-008). FAIL-CLOSED by construction:
