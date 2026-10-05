@@ -1,7 +1,7 @@
 # ADR-015-DEFAULT_ROLES_AND_PERMISSIONS
 
 ## Status
-Proposed (2026-10-05). Requires user approval before Phase 03 starts. Resolves OQ-04 and OQ-05 once Accepted.
+Accepted (2026-10-05) by the product owner. Confirmed: `finance.approve` is held by owner and treasurer only. All other recommendations and assumptions are accepted as written, with two amendments: members may leave an organisation (§6 rule 7), and suspended organisations can be reinstated (§5). Closes OQ-04 and OQ-05.
 
 ## Context
 Spec lines that drive this decision:
@@ -181,11 +181,11 @@ One platform role in MVP. Keys are still used so that the role can be split late
 | Key | Allows | Source |
 |---|---|---|
 | `platform.organisations.read` | List organisations with metadata only: name, type, visibility, lifecycle state, owner contact, created date, subscription state. No tenant content. | LIFECYCLE_STATE_MACHINE; USER_PERSONAS |
-| `platform.organisations.suspend` | ACTIVE → SUSPENDED, with a required reason. | LIFECYCLE_STATE_MACHINE |
+| `platform.organisations.suspend` | ACTIVE → SUSPENDED and reinstatement SUSPENDED → ACTIVE, each with a required reason. | LIFECYCLE_STATE_MACHINE |
 | `platform.organisations.archive` | ACTIVE/SUSPENDED → ARCHIVED, with a required reason. | LIFECYCLE_STATE_MACHINE |
 | `platform.subscriptions.manage` | Operator-driven subscription transitions (e.g. manual TRIAL → ACTIVE after an offline payment), as settled by OQ-03. | LIFECYCLE_STATE_MACHINE; OQ-03 |
 
-Spec gap: the lifecycle has no SUSPENDED → ACTIVE (reinstate) transition. A suspension is therefore permanent short of archive. The lifecycle spec needs an amendment if reinstatement is wanted; this ADR does not add it.
+Reinstatement: the product owner approved a SUSPENDED → ACTIVE transition (2026-10-05). `saas/LIFECYCLE_STATE_MACHINE.md` is amended accordingly; reinstatement uses `platform.organisations.suspend` and is audited with a reason.
 
 ### Access to tenant data
 - **A. None in MVP (recommended).** Platform endpoints return organisation metadata only. Support works through the organisation owner. This is the only option that fully keeps finance and member data inside the tenant.
@@ -211,8 +211,9 @@ All platform actions write a platform audit record (actor, action, target organi
 4. **Finance separation of duties** follows ADR-013. The approver count is tenant-scoped and counts active memberships whose roles grant `finance.approve`. Every role change is audited (actor, target membership, roles before/after, timestamp), so removing approvers to unlock self-approval is visible, as ADR-013 relies on. No key grants writing or editing audit records (FIN-015).
 5. **Fail closed.** An unknown key, a missing membership or a membership of another organisation means deny. Permissions are evaluated against the membership in the server-resolved organisation context (TENANT-003, AUTH-008), never against client-sent roles. A role change takes effect on the next request.
 6. **Frontend visibility only.** The API returns the caller's effective permission keys for the current organisation (RBAC-005) so the UI can hide controls. The server checks again on every request (AUTH-003).
+7. **Members may leave.** Any non-owner member may end their own membership without a permission. The owner cannot leave; they must transfer ownership first (rule 2). Leaving is audited and counts toward the ADR-013 approver count on the next request.
 
-## Decision (recommended)
+## Decision
 - Adopt the 23 tenant keys in §1 and the 4 platform keys in §5 as the canonical catalogue. New keys are added only by amending this ADR (roadmap rule 4).
 - Five fixed system roles, more than one allowed per membership, with the matrix in §2. `finance.approve` is held by owner and treasurer.
 - No custom roles in MVP (§3, Option A).

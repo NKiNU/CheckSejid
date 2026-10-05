@@ -1,7 +1,7 @@
 # ADR-012-PRAYER_TIME_PROVIDER
 
 ## Status
-Proposed (2026-10-05) — requires user approval before Phase 09 starts.
+Accepted (2026-10-05) by the product owner, with the recommended option.
 
 ## Context
 Spec lines that drive this decision:
@@ -34,7 +34,7 @@ Malaysian organisations select a JAKIM zone; the backend fetches that zone's tim
 - Pro: little code, global coverage.
 - Con: an external dependency with no Malaysian authority; offers nothing over B except less code, and adds an outage risk.
 
-## Decision (recommended)
+## Decision
 Option C.
 - A prayer-time source is global reference data, not tenant data. Cached timetables are keyed by `(source, zone or rounded coordinates, date)` and shared across tenants. Organisations store only their location context (JAKIM zone and/or coordinates, plus timezone).
 - Refresh is explicit: a scheduled job (in-process cron, no queue) fetches the timetable well ahead of use, for example the next month or year per zone in use. On fetch failure the system keeps serving cached data and logs the failure. If no cached data exists for a date, it falls back to calculation, labelled as calculated.

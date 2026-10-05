@@ -1,7 +1,7 @@
 # ADR-014-HOSTING_AND_OBJECT_STORAGE
 
 ## Status
-Proposed (2026-10-05) — requires user approval before Phase 12. Object-storage choices are needed earlier, by the first phase that stores files: organisation logo and cover in Phase 05, expense evidence in Phase 08.
+Accepted (2026-10-05) by the product owner, with the recommended option. Option B (AWS ap-southeast-5); the data-residency/PDPA check remains a Phase 12 task. Storage rules apply from Phase 05.
 
 ## Context
 Spec lines that drive this decision:
@@ -35,7 +35,7 @@ One small compute instance (or a container service) running the backend containe
 - Pro: cheap, simple, managed DB backups, S3-compatible Spaces, low latency to Malaysia.
 - Con: data stored in Singapore, so cross-border transfer obligations apply.
 
-## Decision (recommended)
+## Decision
 Option B, with D as the fallback if the residency check concludes that storing data in Singapore is acceptable and cost matters more.
 
 Rules that hold whichever option is chosen:

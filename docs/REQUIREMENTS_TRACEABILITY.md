@@ -46,7 +46,7 @@ Rules:
 | ORG-001 | Organisation creation creates the organisation and the owner membership as one coherent (atomic) workflow. | saas/ORGANISATION_ACCOUNT_MODEL.md; PHASE_04 acceptance | 02, 04 | `tenancy.db.test.ts` › creates the organisation and the creator's membership atomically (built in 02) |
 | ORG-002 | MVP: a management user/account actively manages one organisation. | ADR-006; saas/ORGANISATION_ACCOUNT_MODEL.md | 02, 04 | Partial (02): `tenancy.db.test.ts` › a user can own only one organisation (`Organisation.ownerId @unique`) |
 | ORG-003 | An organisation can have authorised staff/committee memberships in addition to the owner. | saas/ORGANISATION_ACCOUNT_MODEL.md | 02 | Partial (02): `tenancy.db.test.ts` › owner adds an existing user; duplicate rejected; non-owner cannot add. Invite flow TBD. |
-| ORG-004 | Organisation lifecycle: DRAFT → ONBOARDING → ACTIVE; ACTIVE → SUSPENDED; ACTIVE/SUSPENDED → ARCHIVED. Other transitions are rejected. | saas/LIFECYCLE_STATE_MACHINE.md | 04 | |
+| ORG-004 | Organisation lifecycle: DRAFT → ONBOARDING → ACTIVE; ACTIVE → SUSPENDED; SUSPENDED → ACTIVE (reinstate); ACTIVE/SUSPENDED → ARCHIVED. Other transitions are rejected. | saas/LIFECYCLE_STATE_MACHINE.md | 04 | |
 | ORG-005 | The organisation profile supports name, logo, cover, description, type, contacts, location and links. | modules/organisation/ORGANISATION_PROFILE.md | 04, 05 | |
 | ORG-006 | Organisation visibility is one of Public, Private, Unlisted. | README.md; modules/organisation/ORGANISATION_PROFILE.md | 05 | |
 | ORG-007 | Generic organisation modules do not hard-code Masjid-only assumptions (e.g. organisation type, job titles). | CLAUDE.md; modules/islamic-features/ISLAMIC_FEATURES_OVERVIEW.md | All | |
@@ -61,6 +61,14 @@ Rules:
 | RBAC-004 | Permissions and subscription entitlements are separate checks, and both may be required. | saas/FEATURE_ENTITLEMENTS.md; CLAUDE.md | 03, 11 | |
 | RBAC-005 | Permission keys are defined in the backend and exposed to the frontend through the API. | ADR-010 | 03 | |
 | RBAC-006 | Platform administration is separate from tenant financial authority. | product/USER_PERSONAS.md | 03 | |
+| RBAC-007 | The permission-key catalogue in ADR-015 is canonical; keys are added only by amending ADR-015. | ADR-015 | 03, All | |
+| RBAC-008 | Exactly one owner per organisation; ownership changes only by atomic, audited transfer. | ADR-015 §6 | 03 | |
+| RBAC-009 | No self-escalation: nobody changes their own roles, and an actor grants only roles whose permissions they hold. | ADR-015 §6 | 03 | |
+| RBAC-010 | Permission checks fail closed (unknown key, missing or foreign membership → deny). | ADR-015 §6 | 03, All | |
+| RBAC-011 | Every role change is audited (actor, target, before/after, timestamp). | ADR-015 §6; ADR-013 | 03 | |
+| RBAC-012 | Platform Administrator is a DB flag set only out of band; it holds no tenant permissions and has no tenant data access in MVP; platform actions are audited. | ADR-015 §5 | 03, 04, 11 | |
+| RBAC-013 | A non-owner member may leave an organisation; the owner must transfer ownership first. | ADR-015 §6 rule 7 | 03 | |
+| RBAC-014 | `finance.approve` is held by owner and treasurer only. | ADR-015 §2 (confirmed by product owner) | 03, 08 | |
 
 ## Public platform and discovery
 
@@ -170,8 +178,8 @@ These are implied by the specs but unclear. Do not implement a guess. Resolve ea
 | OQ-01 | Which capabilities and quotas does each plan (Free/Starter/Professional) include? Are Islamic features and finance approvals available on every plan? | business/SUBSCRIPTION_PLANS.md, README.md | 11 |
 | OQ-02 | Which plan level does the 30-day trial grant? What happens on EXPIRED or CANCELLED (downgrade to Free, read-only, suspension)? | saas/SUBSCRIPTION_AND_BILLING.md, saas/LIFECYCLE_STATE_MACHINE.md | 11 |
 | OQ-03 | MVP excludes "online payment processing". How do paid plans get paid for and activated in MVP (manual invoice plus platform-admin activation?), and who triggers TRIAL → ACTIVE and ACTIVE → PAST_DUE? | product/MVP_SCOPE.md vs saas/LIFECYCLE_STATE_MACHINE.md | 11 |
-| OQ-04 | What is the default role → permission mapping (e.g. does admin hold `finance.approve`)? What is the full permission-key list? The "matrix" doc gives only examples. | architecture/ROLE_PERMISSION_MATRIX.md | 03 |
-| OQ-05 | What may the Platform Administrator do (suspend organisations, i.e. ACTIVE → SUSPENDED; manage subscriptions)? How do they authenticate? No phase owns this. | product/USER_PERSONAS.md, saas/LIFECYCLE_STATE_MACHINE.md | 03, 04, 11 |
+| OQ-04 | ~~Default role → permission mapping and full key list.~~ **Resolved by ADR-015 (Accepted 2026-10-05).** | | |
+| OQ-05 | ~~Platform Administrator powers.~~ **Resolved by ADR-015 §5 (Accepted 2026-10-05).** | | |
 | OQ-06 | Finance states: what moves SUBMITTED → PENDING_APPROVAL (automatic or a separate action)? Which "earlier states" may be VOIDED? Can an APPROVED record be voided, and is a correction a reversal entry or an amendment? Is REJECTED terminal or does it return to DRAFT? | finance/FINANCIAL_STATE_MACHINE.md, finance/FINANCIAL_AUDIT_LOGS.md | 08 |
 | OQ-07 | Do all income and expense records require approval? Do budgets and collections go through the same state machine? | finance/FINANCIAL_STATE_MACHINE.md, finance/BUDGETING.md, finance/COLLECTION_MANAGEMENT.md | 08 |
 | OQ-08 | Budget "actual": is it derived from APPROVED expenses (and income?) matched by category and period? | finance/BUDGETING.md | 08 |
@@ -185,3 +193,5 @@ These are implied by the specs but unclear. Do not implement a guess. Resolve ea
 | OQ-16 | Are prayer times shown for the organisation's location only, or also for the viewer's location? | modules/islamic-features/PRAYER_TIMES.md, ADR-012 | 09 |
 | OQ-17 | Hub: can ARCHIVED content be re-published? What fields does an event have (start/end, timezone, location)? Legacy disposition lists "events/classes", but the hub spec has no "classes". | modules/information-hub/INFORMATION_HUB.md, product/LEGACY_FEATURE_DISPOSITION.md | 06 |
 | OQ-18 | Production targets: backup RPO/RTO, monitoring/alerting expectations. | implementation-roadmap/PHASE_12_PRODUCTION.md | 12 |
+| OQ-19 | Break-glass (audited) platform access to tenant data: is it ever allowed? (Not in MVP per ADR-015.) | ADR-015 §5 | post-MVP |
+| OQ-20 | Invitation/consent flow for adding members (today an owner adds an existing user directly). | Phase 02 review | 04 |

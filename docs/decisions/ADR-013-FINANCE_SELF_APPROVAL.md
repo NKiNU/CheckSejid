@@ -1,7 +1,7 @@
 # ADR-013-FINANCE_SELF_APPROVAL
 
 ## Status
-Proposed (2026-10-05) — requires user approval before Phase 08 starts.
+Accepted (2026-10-05) by the product owner, with the recommended option.
 
 ## Context
 Spec lines that drive this decision:
@@ -36,7 +36,7 @@ Self-approval is rejected unless the requester is the only active member of the 
 - Pro: flexible.
 - Con: this is the "future configurable policy" that `FINANCIAL_APPROVALS.md` says needs explicit design. It adds settings UI, permission questions (who may change the toggle) and possible plan-gating questions. Over-scoped for MVP.
 
-## Decision (recommended)
+## Decision
 Option C for MVP.
 - Enforcement happens server-side in the finance approval service, never only in the UI (AUTH-003).
 - The approver count is tenant-scoped and counts active memberships whose roles grant `finance.approve`.
