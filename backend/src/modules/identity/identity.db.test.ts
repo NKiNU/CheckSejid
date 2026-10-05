@@ -36,8 +36,7 @@ function refresh(token: string) {
 
 describe.skipIf(!hasDb)("identity (database)", () => {
   beforeEach(async () => {
-    await rateLimitStores.credentials.resetAll();
-    await rateLimitStores.refresh.resetAll();
+    await Promise.all(Object.values(rateLimitStores).map((s) => s.resetAll()));
   });
   afterAll(async () => {
     await prisma.$disconnect();
@@ -198,6 +197,39 @@ describe.skipIf(!hasDb)("identity (database)", () => {
       const cleared = (res.headers["set-cookie"] as unknown as string[]).join(";");
       expect(cleared).toMatch(new RegExp(`${REFRESH_COOKIE}=;`));
       expect((await refresh(t1)).status).toBe(401);
+    });
+
+    // Needs real PostgreSQL row locking across connections. PGlite (`prisma dev`, a wasm build)
+    // serialises transactions, so the test cannot fail there even without the fix, and overlapping
+    // connections break with 08P01 protocol errors — so it is skipped on PGlite.
+    it("revokes a token issued by a rotation that was in flight when logout started", async (ctx) => {
+      const [{ version }] = await prisma.$queryRaw<{ version: string }[]>`SELECT version()`;
+      if (version.includes("wasm32")) {
+        console.warn("SKIPPED: logout/rotation race test needs real PostgreSQL (PGlite detected)");
+        ctx.skip();
+      }
+      const { email, refresh: t1 } = await registerAndLogin();
+      const a = await prisma.refreshToken.findUniqueOrThrow({ where: { tokenHash: hashRefreshToken(t1) } });
+      const user = await prisma.user.findUniqueOrThrow({ where: { email: email.toLowerCase() } });
+      const t2 = newRefreshToken();
+      let logoutDone: Promise<unknown> | undefined;
+
+      // Play the part of a refresh mid-rotation: hold the family lock, start logout
+      // (it must wait), then rotate and issue token B before committing.
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "RefreshToken" WHERE "familyId" = ${a.familyId}::uuid FOR UPDATE`;
+        logoutDone = request(app).post("/auth/session/logout").set("Cookie", `${REFRESH_COOKIE}=${t1}`).then();
+        await new Promise((r) => setTimeout(r, 200)); // let logout reach the database and block
+        await tx.refreshToken.update({ where: { id: a.id }, data: { rotatedAt: new Date() } });
+        await tx.refreshToken.create({
+          data: { userId: user.id, familyId: a.familyId, tokenHash: hashRefreshToken(t2), expiresAt: a.expiresAt },
+        });
+      });
+      await logoutDone;
+
+      const b = await prisma.refreshToken.findUniqueOrThrow({ where: { tokenHash: hashRefreshToken(t2) } });
+      expect(b.revokedAt).not.toBeNull();
+      expect((await refresh(t2)).status).toBe(401);
     });
 
     it("is idempotent without a cookie", async () => {

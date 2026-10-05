@@ -6,6 +6,11 @@ import { identityRouter } from "./modules/identity/identity.routes.ts";
 export const app = express();
 
 app.disable("x-powered-by");
+
+// TRUST_PROXY: hop count (e.g. "1") or comma-separated IPs/CIDRs/names ("loopback, 10.0.0.0/8").
+// Unset = off, so client-supplied X-Forwarded-For is ignored and rate limits key on the socket IP.
+const trustProxy = process.env.TRUST_PROXY?.trim();
+if (trustProxy) app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 

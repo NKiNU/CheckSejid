@@ -10,8 +10,7 @@ const secret = new TextEncoder().encode(process.env.JWT_ACCESS_SECRET);
 const userId = "00000000-0000-4000-8000-000000000001";
 
 beforeEach(async () => {
-  await rateLimitStores.credentials.resetAll();
-  await rateLimitStores.refresh.resetAll();
+  await Promise.all(Object.values(rateLimitStores).map((s) => s.resetAll()));
 });
 
 describe("requireAuth (GET /me)", () => {
@@ -123,12 +122,34 @@ describe("validation (server-side)", () => {
 });
 
 describe("rate limiting", () => {
-  it("limits login attempts per client", async () => {
-    for (let i = 0; i < 10; i++) {
-      await request(app).post("/auth/login").send({}).expect(400);
-    }
-    const res = await request(app).post("/auth/login").send({});
+  // Bodies omit the password, so requests stop at validation (400) and need no database.
+  const loginAs = (email: string) => request(app).post("/auth/login").send({ email });
+
+  it("limits login attempts per client IP (across different emails)", async () => {
+    for (let i = 0; i < 10; i++) await loginAs(`u${i}@example.com`).expect(400);
+    const res = await loginAs("another@example.com");
     expect(res.status).toBe(429);
     expect(res.body.error.code).toBe("RATE_LIMITED");
+  });
+
+  it("limits login attempts per normalised email, independently of IP", async () => {
+    for (let i = 0; i < 10; i++) await loginAs("victim@example.com").expect(400);
+    await rateLimitStores.login.resetAll(); // simulate a fresh IP
+    expect((await loginAs("  VICTIM@Example.com ")).status).toBe(429);
+    expect((await loginAs("someone-else@example.com")).status).toBe(400);
+  });
+
+  it("register has its own limiter, unaffected by login attempts", async () => {
+    for (let i = 0; i < 10; i++) await loginAs(`u${i}@example.com`).expect(400);
+    expect((await request(app).post("/auth/register").send({})).status).toBe(400);
+    for (let i = 0; i < 4; i++) await request(app).post("/auth/register").send({}).expect(400);
+    expect((await request(app).post("/auth/register").send({})).status).toBe(429);
+  });
+
+  it("refresh and logout share the session limiter", async () => {
+    for (let i = 0; i < 30; i++) await request(app).post("/auth/session/refresh").expect(401);
+    for (let i = 0; i < 30; i++) await request(app).post("/auth/session/logout").expect(204);
+    expect((await request(app).post("/auth/session/logout")).status).toBe(429);
+    expect((await request(app).post("/auth/session/refresh")).status).toBe(429);
   });
 });

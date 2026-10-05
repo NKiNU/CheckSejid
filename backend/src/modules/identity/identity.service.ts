@@ -47,37 +47,48 @@ export async function login(email: string, password: string) {
   return { accessToken: await signAccessToken(user.id), refreshToken };
 }
 
-function revokeFamily(familyId: string) {
-  return prisma.refreshToken.updateMany({
+// Every refresh/revoke of a family runs in a transaction that first locks the family's rows.
+// This serialises them: a revoke waits for an in-flight rotation to commit, and its UPDATE
+// (a new statement, so a new READ COMMITTED snapshot) then also sees the newly issued token.
+// A rotation that waited on a revoke re-reads its row afterwards and sees revokedAt.
+async function lockFamily(tx: Prisma.TransactionClient, familyId: string) {
+  await tx.$queryRaw`SELECT id FROM "RefreshToken" WHERE "familyId" = ${familyId}::uuid FOR UPDATE`;
+}
+
+function revokeFamilyTx(tx: Prisma.TransactionClient, familyId: string) {
+  return tx.refreshToken.updateMany({
     where: { familyId, revokedAt: null },
     data: { revokedAt: new Date() },
   });
 }
 
+function revokeFamily(familyId: string) {
+  return prisma.$transaction(async (tx) => {
+    await lockFamily(tx, familyId);
+    await revokeFamilyTx(tx, familyId);
+  });
+}
+
 export async function refresh(token: string) {
-  const current = await prisma.refreshToken.findUnique({ where: { tokenHash: hashRefreshToken(token) } });
-  if (!current || current.revokedAt) throw unauthenticated();
-  if (current.rotatedAt) {
-    // Reuse of an already-rotated token: assume theft, kill the whole session family.
-    await revokeFamily(current.familyId);
-    throw unauthenticated();
-  }
-  if (current.expiresAt <= new Date()) throw unauthenticated();
+  const found = await prisma.refreshToken.findUnique({ where: { tokenHash: hashRefreshToken(token) } });
+  if (!found) throw unauthenticated();
 
   const next = await prisma.$transaction(async (tx) => {
-    // Conditional update makes rotation single-use even under concurrent requests.
-    const claimed = await tx.refreshToken.updateMany({
-      where: { id: current.id, rotatedAt: null, revokedAt: null },
-      data: { rotatedAt: new Date() },
-    });
-    if (claimed.count !== 1) return null;
+    await lockFamily(tx, found.familyId);
+    // Re-read under the lock: state may have changed while we waited.
+    const current = await tx.refreshToken.findUniqueOrThrow({ where: { id: found.id } });
+    if (current.revokedAt) return null;
+    if (current.rotatedAt) {
+      // Reuse of an already-rotated token: assume theft, kill the whole session family.
+      await revokeFamilyTx(tx, current.familyId);
+      return null;
+    }
+    if (current.expiresAt <= new Date()) return null;
+    await tx.refreshToken.update({ where: { id: current.id }, data: { rotatedAt: new Date() } });
     return issueRefreshToken(current.userId, current.familyId, current.expiresAt, tx);
   });
-  if (!next) {
-    await revokeFamily(current.familyId);
-    throw unauthenticated();
-  }
-  return { accessToken: await signAccessToken(current.userId), refreshToken: next };
+  if (!next) throw unauthenticated();
+  return { accessToken: await signAccessToken(found.userId), refreshToken: next };
 }
 
 // Revokes the session (token family) the presented refresh token belongs to. Idempotent.

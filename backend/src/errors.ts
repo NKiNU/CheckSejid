@@ -32,8 +32,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     });
     return;
   }
-  // body-parser errors (malformed JSON, payload too large) carry a 4xx status
-  if (typeof err?.status === "number" && err.status >= 400 && err.status < 500) {
+  // Only body-parser errors (identified by `type`, e.g. "entity.parse.failed", "entity.too.large")
+  // are relabelled; any other error falls through to 500 rather than being trusted as a 4xx.
+  if (typeof err?.type === "string" && typeof err.status === "number" && err.status >= 400 && err.status < 500) {
     res.status(err.status).json({ error: { code: "BAD_REQUEST", message: "Malformed request" } });
     return;
   }
