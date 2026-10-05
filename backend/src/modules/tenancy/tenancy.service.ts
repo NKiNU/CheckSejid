@@ -49,22 +49,25 @@ export async function getOrganisation(organisationId: string, userId: string) {
   return orgView(org, userId);
 }
 
-const memberSelect = {
-  id: true,
-  userId: true,
-  createdAt: true,
-  user: { select: { displayName: true } },
-  organisation: { select: { ownerId: true } },
-} as const;
+// forTenant returns scalars only; related User/Organisation data is fetched separately with
+// plain prisma and an explicit safe select (never email/passwordHash).
+const memberSelect = { id: true, userId: true, createdAt: true } as const;
+type MemberRow = { id: string; userId: string; createdAt: Date };
 
-type MemberRow = Prisma.OrganisationMembershipGetPayload<{ select: typeof memberSelect }>;
-const memberView = (m: MemberRow) => ({
-  id: m.id,
-  userId: m.userId,
-  displayName: m.user.displayName,
-  isOwner: m.organisation.ownerId === m.userId,
-  createdAt: m.createdAt,
-});
+async function memberViews(organisationId: string, rows: MemberRow[]) {
+  const [org, users] = await Promise.all([
+    prisma.organisation.findUniqueOrThrow({ where: { id: organisationId }, select: { ownerId: true } }),
+    prisma.user.findMany({ where: { id: { in: rows.map((m) => m.userId) } }, select: { id: true, displayName: true } }),
+  ]);
+  const names = new Map(users.map((u) => [u.id, u.displayName]));
+  return rows.map((m) => ({
+    id: m.id,
+    userId: m.userId,
+    displayName: names.get(m.userId) ?? "",
+    isOwner: org.ownerId === m.userId,
+    createdAt: m.createdAt,
+  }));
+}
 
 export async function listMembers(organisationId: string) {
   const rows = await forTenant(organisationId).organisationMembership.findMany({
@@ -72,7 +75,7 @@ export async function listMembers(organisationId: string) {
     orderBy: { createdAt: "asc" },
     take: LIST_LIMIT,
   });
-  return rows.map(memberView);
+  return memberViews(organisationId, rows);
 }
 
 // SPEC-GAP: no invitation flow is specified. Minimal: the owner adds an existing user by email.
@@ -88,7 +91,7 @@ export async function addMember(organisationId: string, actorUserId: string, ema
       data: { userId: user.id } as Prisma.OrganisationMembershipUncheckedCreateInput, // organisationId stamped by forTenant
       select: memberSelect,
     });
-    return memberView(m);
+    return (await memberViews(organisationId, [m]))[0]!;
   } catch (e) {
     if (isUniqueViolation(e)) throw new HttpError(409, "ALREADY_MEMBER", "User is already a member");
     throw e;

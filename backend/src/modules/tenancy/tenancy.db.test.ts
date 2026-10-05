@@ -8,7 +8,7 @@ import express from "express";
 import { errorHandler } from "../../errors.ts";
 import { requireAuth } from "../identity/auth.ts";
 import { forTenant, requireTenant } from "./tenant.ts";
-import { createTenant, createUser, expectCrossTenantDenied, type TestTenant } from "./tenancy.testing.ts";
+import { createTenant, createUser, expectCrossTenantDenied, type TestTenant } from "../../test/cross-tenant.ts";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
 if (!hasDb) console.warn("tenancy.db.test: DATABASE_URL not set — DB integration tests SKIPPED");
@@ -133,13 +133,31 @@ describe.skipIf(!hasDb)("tenancy (database)", () => {
       const victim = await createTenant();
       const attacker = await createTenant();
       const other = await createUser();
-      await expectCrossTenantDenied(attacker, [
-        { method: "get", path: `/orgs/${victim.organisationId}` },
-        { method: "get", path: `/orgs/${victim.organisationId}/members` },
-        { method: "post", path: `/orgs/${victim.organisationId}/members`, body: { email: other.email } },
-      ]);
-      // nothing was written to the victim tenant
-      expect(await prisma.organisationMembership.count({ where: { organisationId: victim.organisationId } })).toBe(1);
+      await expectCrossTenantDenied(
+        attacker,
+        [
+          { method: "get", path: `/orgs/${victim.organisationId}` },
+          { method: "get", path: `/orgs/${victim.organisationId}/members` },
+          { method: "post", path: `/orgs/${victim.organisationId}/members`, body: { email: other.email } },
+        ],
+        { snapshot: () => prisma.organisationMembership.findMany({ where: { organisationId: victim.organisationId } }) },
+      );
+    });
+
+    it("cross-tenant helper rejects a typo'd path (generic 404 has a different code)", async () => {
+      const attacker = await createTenant();
+      const victim = await createTenant();
+      await expect(
+        expectCrossTenantDenied(attacker, [{ method: "get", path: `/orgz/${victim.organisationId}` }]),
+      ).rejects.toThrow();
+    });
+
+    it("rate-limits organisation creation per user", async () => {
+      const t = await createTenant();
+      const statuses: number[] = [];
+      for (let i = 0; i < 10; i++) statuses.push((await request(app).post("/orgs").set(as(t)).send({ name: "X" })).status);
+      expect(statuses.slice(0, 9).every((s) => s === 409)).toBe(true);
+      expect(statuses[9]).toBe(429);
     });
 
     it("requireTenant works in the documented mount pattern for later modules", async () => {
@@ -259,9 +277,88 @@ describe.skipIf(!hasDb)("tenancy (database)", () => {
       ).rejects.toThrow(/cross-tenant/);
     });
 
-    it("leaves global models (User) unscoped", async () => {
+    it("rejects a foreign organisationId in createMany, update and upsert", async () => {
       const a = await createTenant();
-      expect(await forTenant(a.organisationId).user.findUnique({ where: { id: a.userId } })).not.toBeNull();
+      const b = await createTenant();
+      const u = await createUser();
+      const m = forTenant(a.organisationId).organisationMembership;
+      const foreign = { userId: u.userId, organisationId: b.organisationId };
+      await expect(m.createMany({ data: [foreign] })).rejects.toThrow(/cross-tenant/);
+      await expect(m.update({ where: { id: a.membershipId }, data: { organisationId: b.organisationId } })).rejects.toThrow(
+        /cross-tenant/,
+      );
+      await expect(
+        m.upsert({ where: { id: randomUUID() }, create: foreign, update: {} }),
+      ).rejects.toThrow(/cross-tenant/);
+      await expect(
+        m.upsert({ where: { id: a.membershipId }, create: { userId: u.userId } as never, update: foreign }),
+      ).rejects.toThrow(/cross-tenant/);
+      expect(await prisma.organisationMembership.count({ where: { userId: u.userId } })).toBe(0);
+    });
+
+    it("global models are not reachable (User, RefreshToken, Organisation)", async () => {
+      const db = forTenant(randomUUID()) as unknown as Record<string, unknown>;
+      for (const model of ["user", "refreshToken", "organisation"]) {
+        expect(() => db[model], model).toThrow(/not a tenant-owned model/);
+      }
+    });
+
+    it("raw SQL and transaction methods are not present", async () => {
+      const db = forTenant(randomUUID()) as unknown as Record<string, unknown>;
+      for (const m of ["$queryRaw", "$executeRaw", "$queryRawUnsafe", "$executeRawUnsafe", "$transaction", "$extends"]) {
+        expect(() => db[m], m).toThrow();
+      }
+    });
+
+    it("client-supplied organisationId tricks in where (OR, undefined, NOT) cannot widen scope", async () => {
+      const a = await createTenant();
+      const b = await createTenant();
+      const m = forTenant(a.organisationId).organisationMembership;
+      expect(await m.findMany({ where: { OR: [{ organisationId: b.organisationId }] } })).toHaveLength(0);
+      expect(await m.findMany({ where: { organisationId: undefined } })).toHaveLength(1);
+      expect(await m.count({ where: { NOT: { organisationId: a.organisationId } } })).toBe(0);
+      // a client organisationId is overridden by the scope: still only A's row
+      expect((await m.findMany({ where: { organisationId: b.organisationId } })).map((r) => r.id)).toEqual([
+        a.membershipId,
+      ]);
+    });
+
+    it("relation writes (connect re-parenting, nested create) throw", async () => {
+      const a = await createTenant();
+      const b = await createTenant();
+      const u = await createUser();
+      const m = forTenant(a.organisationId).organisationMembership;
+      await expect(
+        m.update({ where: { id: a.membershipId }, data: { organisation: { connect: { id: b.organisationId } } } }),
+      ).rejects.toThrow(/scalar/);
+      await expect(
+        m.create({ data: { user: { connect: { id: u.userId } } } as never }),
+      ).rejects.toThrow(/scalar/);
+      const row = await prisma.organisationMembership.findUniqueOrThrow({ where: { id: a.membershipId } });
+      expect(row.organisationId).toBe(a.organisationId);
+    });
+
+    it("include, relation select, relation filters and relation orderBy throw", async () => {
+      const a = await createTenant();
+      const m = forTenant(a.organisationId).organisationMembership;
+      await expect(m.findMany({ include: { user: true } })).rejects.toThrow(/include/);
+      await expect(m.findMany({ select: { id: true, user: { select: { passwordHash: true } } } })).rejects.toThrow(/scalar/);
+      await expect(m.findMany({ select: { _count: true } as never })).rejects.toThrow(/scalar/);
+      await expect(m.findMany({ where: { user: { email: { contains: "@" } } } })).rejects.toThrow(/scalar/);
+      await expect(m.findMany({ orderBy: { user: { displayName: "asc" } } })).rejects.toThrow(/scalar/);
+    });
+
+    it("does not mutate the caller's arguments", async () => {
+      const a = await createTenant();
+      const args = { where: { userId: a.userId } };
+      await forTenant(a.organisationId).organisationMembership.findMany(args);
+      expect(args).toEqual({ where: { userId: a.userId } });
+    });
+
+    it("works inside a transaction via forTenant(orgId, tx)", async () => {
+      const a = await createTenant();
+      const n = await prisma.$transaction((tx) => forTenant(a.organisationId, tx).organisationMembership.count());
+      expect(n).toBe(1);
     });
   });
 });
