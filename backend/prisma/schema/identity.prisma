@@ -1,0 +1,31 @@
+// Phase 01 — Identity. Global models: a User is not owned by an organisation
+// (DATA_MODEL_SPECIFICATION: "Global: User"), so no organisationId here.
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique // normalised to lower case by the service
+  passwordHash String // argon2id (AUTH-001)
+  displayName  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+}
+
+// Only the SHA-256 hash of the opaque refresh token is stored (ADR-009).
+// Every token descended from one login shares a familyId; presenting a token
+// that was already rotated revokes the whole family (reuse detection).
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId  String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  rotatedAt DateTime?
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+}
