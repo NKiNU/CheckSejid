@@ -20,7 +20,7 @@ Rules:
 | AUTH-005 | Access tokens are short-lived (~15 min) Bearer tokens held in frontend memory, not localStorage. Refresh tokens are opaque values in an httpOnly, Secure, SameSite cookie scoped to the refresh endpoint, and only their hash is stored. | ADR-009 | 01 | `auth.test.ts` › tokens; `identity.db.test.ts` › cookie flags; `frontend/src/features/identity/api.test.ts` |
 | AUTH-006 | A refresh token is rotated on every use. Reuse of a rotated token revokes the whole token family. | ADR-009 | 01 | `identity.db.test.ts` › refresh rotation (incl. reuse + concurrent refresh) |
 | AUTH-007 | Logout and password change revoke refresh tokens. | ADR-009 | 01 | Partial (01): logout covered by `identity.db.test.ts` › logout (incl. in-flight rotation race, Postgres-only). Password change not built yet. |
-| AUTH-008 | Tokens identify the user only. Organisation context, roles and permissions are resolved server-side per request and never taken from client-supplied claims. | ADR-009; CLAUDE.md | 01, 02 | 01 part: `auth.test.ts` (token = `sub` only). Phase 02 adds server-side tenant resolution. |
+| AUTH-008 | Tokens identify the user only. Organisation context, roles and permissions are resolved server-side per request and never taken from client-supplied claims. | ADR-009; CLAUDE.md | 01, 02 | 01 part: `auth.test.ts` (token = `sub` only). 02: `tenancy.db.test.ts` › requireTenant resolves membership from DB per request. |
 | SEC-001 | All input is validated server-side. | CLAUDE.md; architecture/SECURITY_ARCHITECTURE.md; architecture/API_STANDARDS.md | All | 01: `auth.test.ts` › validation (server-side) |
 | SEC-002 | Secrets come from environment/secret configuration and are never committed. | architecture/SECURITY_ARCHITECTURE.md; ADR-009; PHASE_00 acceptance | 00, 12 | |
 | SEC-003 | Logs never contain secrets (passwords, tokens, signing keys). | architecture/SECURITY_ARCHITECTURE.md | 01, 12 | |
@@ -35,17 +35,17 @@ Rules:
 
 | ID | Requirement | Source | Phase | Tests |
 |---|---|---|---|---|
-| TENANT-001 | Every organisation is a logical tenant. | saas/MULTI_TENANCY.md | 02 | |
-| TENANT-002 | Tenant-owned records belong to exactly one organisation unless explicitly documented otherwise. | saas/MULTI_TENANCY.md | 02 | |
-| TENANT-003 | Server-side authorisation determines the accessible tenant context. | saas/MULTI_TENANCY.md | 02 | |
-| TENANT-004 | Client-supplied organisation IDs are identifiers, not proof of access. | saas/MULTI_TENANCY.md | 02 | |
-| TENANT-005 | Tenant A cannot read, update or delete tenant B's records. | architecture/TENANT_DATA_ISOLATION.md | 02, All | |
-| TENANT-006 | Foreign-tenant IDs cannot be attached. Referenced entities must belong to the same tenant, and cross-tenant references are rejected. | architecture/TENANT_DATA_ISOLATION.md; architecture/DATA_MODEL_SPECIFICATION.md | 02, All | |
-| TENANT-007 | Reports and aggregations remain tenant-scoped. | architecture/TENANT_DATA_ISOLATION.md; saas/MULTI_TENANCY.md | 02, 08, All | |
-| TENANT-008 | Tenant-owned models have a required `organisationId` and timestamps. | architecture/DATA_MODEL_SPECIFICATION.md; ADR-008 | 02, All | |
-| ORG-001 | Organisation creation creates the organisation and the owner membership as one coherent (atomic) workflow. | saas/ORGANISATION_ACCOUNT_MODEL.md; PHASE_04 acceptance | 04 | |
-| ORG-002 | MVP: a management user/account actively manages one organisation. | ADR-006; saas/ORGANISATION_ACCOUNT_MODEL.md | 02, 04 | |
-| ORG-003 | An organisation can have authorised staff/committee memberships in addition to the owner. | saas/ORGANISATION_ACCOUNT_MODEL.md | 02 | |
+| TENANT-001 | Every organisation is a logical tenant. | saas/MULTI_TENANCY.md | 02 | `tenancy.db.test.ts` › creates the organisation and the creator's membership atomically |
+| TENANT-002 | Tenant-owned records belong to exactly one organisation unless explicitly documented otherwise. | saas/MULTI_TENANCY.md | 02 | `tenancy.db.test.ts` › injects organisationId on create (forTenant) |
+| TENANT-003 | Server-side authorisation determines the accessible tenant context. | saas/MULTI_TENANCY.md | 02 | `tenancy.db.test.ts` › lists only my organisations; membership checked on every request (removed member loses access) |
+| TENANT-004 | Client-supplied organisation IDs are identifiers, not proof of access. | saas/MULTI_TENANCY.md | 02 | `tenancy.db.test.ts` › client organisationId/userId in body rejected; unknown/malformed/foreign org ids → same 404 |
+| TENANT-005 | Tenant A cannot read, update or delete tenant B's records. | architecture/TENANT_DATA_ISOLATION.md | 02, All | `tenancy.db.test.ts` › another tenant gets 401/404 on every tenant route (`src/test/cross-tenant.ts` helper, error-code + snapshot checks); forTenant: global models unreachable, raw/$transaction absent, where tricks cannot widen scope, include/relation select throw |
+| TENANT-006 | Foreign-tenant IDs cannot be attached. Referenced entities must belong to the same tenant, and cross-tenant references are rejected. | architecture/TENANT_DATA_ISOLATION.md; architecture/DATA_MODEL_SPECIFICATION.md | 02, All | `tenancy.db.test.ts` › relation writes (connect, nested create) throw; foreign organisationId in create/createMany/update/upsert throws |
+| TENANT-007 | Reports and aggregations remain tenant-scoped. | architecture/TENANT_DATA_ISOLATION.md; saas/MULTI_TENANCY.md | 02, 08, All | Partial (02): `tenancy.db.test.ts` › forTenant scopes count/aggregate/groupBy. Report coverage in Phase 08. |
+| TENANT-008 | Tenant-owned models have a required `organisationId` and timestamps. | architecture/DATA_MODEL_SPECIFICATION.md; ADR-008 | 02, All | Migration `20261005071133_tenancy`; forTenant only exposes models with an `organisationId` field |
+| ORG-001 | Organisation creation creates the organisation and the owner membership as one coherent (atomic) workflow. | saas/ORGANISATION_ACCOUNT_MODEL.md; PHASE_04 acceptance | 02, 04 | `tenancy.db.test.ts` › creates the organisation and the creator's membership atomically (built in 02) |
+| ORG-002 | MVP: a management user/account actively manages one organisation. | ADR-006; saas/ORGANISATION_ACCOUNT_MODEL.md | 02, 04 | Partial (02): `tenancy.db.test.ts` › a user can own only one organisation (`Organisation.ownerId @unique`) |
+| ORG-003 | An organisation can have authorised staff/committee memberships in addition to the owner. | saas/ORGANISATION_ACCOUNT_MODEL.md | 02 | Partial (02): `tenancy.db.test.ts` › owner adds an existing user; duplicate rejected; non-owner cannot add. Invite flow TBD. |
 | ORG-004 | Organisation lifecycle: DRAFT → ONBOARDING → ACTIVE; ACTIVE → SUSPENDED; ACTIVE/SUSPENDED → ARCHIVED. Other transitions are rejected. | saas/LIFECYCLE_STATE_MACHINE.md | 04 | |
 | ORG-005 | The organisation profile supports name, logo, cover, description, type, contacts, location and links. | modules/organisation/ORGANISATION_PROFILE.md | 04, 05 | |
 | ORG-006 | Organisation visibility is one of Public, Private, Unlisted. | README.md; modules/organisation/ORGANISATION_PROFILE.md | 05 | |
