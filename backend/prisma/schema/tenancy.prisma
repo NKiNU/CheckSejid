@@ -46,8 +46,9 @@ model Organisation {
   country      String? // ISO 3166-1 alpha-2
   links        Json? // [{ label, url }], http(s) only, validated at the API
 
-  memberships OrganisationMembership[]
-  auditLogs   AuditLog[]
+  memberships   OrganisationMembership[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
 }
 
 // Store membership only (ORG-003). Roles are MembershipRole rows (rbac.prisma).

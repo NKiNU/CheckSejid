@@ -1,0 +1,23 @@
+// Phase 10 (ADR-017) — in-app notifications. Tenant-owned (organisationId, TENANT-008); one row per
+// recipient. Content is minimal and non-sensitive (ADR-017 §2): never amounts or permissioned data.
+// Reachable via forTenant only so notify() can stamp organisationId. Inbox reads/updates must go through
+// the self-scoped visible() helper (notifications.routes.ts), never an org-scoped forTenant read
+// (ADR-015 §1, ADR-017 §4).
+model Notification {
+  id              String       @id @default(uuid()) @db.Uuid
+  organisationId  String       @db.Uuid
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  recipientUserId String       @db.Uuid
+  recipient       User         @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  actorUserId     String?      @db.Uuid // no FK: history outlives the actor's membership
+  type            String // e.g. "member.added"
+  title           String
+  targetType      String
+  targetId        String       @db.Uuid
+  readAt          DateTime? // NOTIF-003
+  createdAt       DateTime     @default(now())
+
+  @@index([recipientUserId, createdAt])
+  @@index([recipientUserId, readAt])
+  @@index([organisationId])
+}

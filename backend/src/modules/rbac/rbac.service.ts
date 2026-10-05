@@ -6,6 +6,7 @@ import { Prisma } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
 import { getMember, memberSelect, memberViews } from "../tenancy/tenancy.service.ts";
+import { notify } from "../notifications/notifications.service.ts";
 import { forTenant } from "../tenancy/tenant.ts";
 import { ASSIGNABLE_ROLES, canGrant, type AssignableRole } from "./permissions.ts";
 import { audit, effectivePermissions, forbidden, membershipRoles, roleNotGrantable, type TenantContext } from "./rbac.ts";
@@ -73,6 +74,18 @@ export async function addMember(actor: Actor, email: string, roles: AssignableRo
         targetType: "membership",
         targetId: m.id,
         after: { userId: user.id, roles },
+      });
+      // NOTIF-005 / ADR-017: same transaction, so a notify failure rolls the add back. Every member sees
+      // the title, and members.read (held by all roles, ADR-015) already shows display names.
+      const org = await tx.organisation.findUniqueOrThrow({ where: { id: organisationId }, select: { name: true } });
+      const joined = await tx.user.findUniqueOrThrow({ where: { id: user.id }, select: { displayName: true } });
+      await notify(tx, {
+        organisationId,
+        actorUserId: actor.userId,
+        type: "member.added",
+        title: `${joined.displayName} joined ${org.name}`,
+        targetType: "membership",
+        targetId: m.id,
       });
       return (await memberViews(organisationId, [m], tx))[0]!;
     });

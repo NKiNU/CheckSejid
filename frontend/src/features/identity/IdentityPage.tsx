@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { NotificationsPanel } from '../notifications/NotificationsPanel.tsx'
 import { OrganisationsPanel } from '../tenancy/OrganisationsPanel.tsx'
 import * as api from './api.ts'
 
@@ -23,6 +24,7 @@ export function IdentityPage() {
     <main>
       <h1>Welcome, {user.displayName}</h1>
       <p>Signed in as {user.email}.</p>
+      <NotificationsPanel />
       <OrganisationsPanel userId={user.id} />
       <button
         type="button"

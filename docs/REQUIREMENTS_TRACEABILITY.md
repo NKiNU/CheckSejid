@@ -141,11 +141,12 @@ Rules:
 
 | ID | Requirement | Source | Phase | Tests |
 |---|---|---|---|---|
-| NOTIF-001 | Notifications originate from domain events. | architecture/NOTIFICATION_ARCHITECTURE.md | 10 | |
-| NOTIF-002 | The MVP channel is in-app only. Email/push are future channels. | architecture/NOTIFICATION_ARCHITECTURE.md; modules/notifications/NOTIFICATIONS.md | 10 | |
-| NOTIF-003 | In-app notification records have read/unread state. | modules/notifications/NOTIFICATIONS.md; PHASE_10 acceptance | 10 | |
-| NOTIF-004 | Domain events include task assignment, roster assignment, finance approval required, event publication and subscription changes. | architecture/NOTIFICATION_ARCHITECTURE.md | 10 (contract); 06, 07, 08, 11 (emit) | |
-| NOTIF-005 | A notification failure does not silently corrupt the originating transaction. | architecture/NOTIFICATION_ARCHITECTURE.md | 10 | |
+| NOTIF-001 | Notifications originate from domain events. | architecture/NOTIFICATION_ARCHITECTURE.md | 10 | `notifications.db.test.ts` › member.added notifies every other member (emitted from `addMember`, first real event per ADR-017 §6). Migration `20261005152752_notifications` |
+| NOTIF-002 | The MVP channel is in-app only. Email/push are future channels. | architecture/NOTIFICATION_ARCHITECTURE.md; modules/notifications/NOTIFICATIONS.md | 10 | In-app only: `Notification` table + `/me/notifications` API + `NotificationsPanel`; no email/push code (ADR-017 §3) |
+| NOTIF-003 | In-app notification records have read/unread state. | modules/notifications/NOTIFICATIONS.md; PHASE_10 acceptance | 10 | `notifications.db.test.ts` › mark read is idempotent; unread filter and read-all; `frontend/src/features/notifications/api.test.ts` |
+| NOTIF-004 | Domain events include task assignment, roster assignment, finance approval required, event publication and subscription changes. | architecture/NOTIFICATION_ARCHITECTURE.md | 10 (contract); 06, 07, 08, 11 (emit) | Partial (10, contract): `NotificationType` union in `notifications.service.ts` names all five events; emitters land in 06, 07, 08, 11 |
+| NOTIF-006 | Recipients are the organisation's management members (all members except the actor); notifications hold only type, non-sensitive title and target reference; the inbox shows only organisations the user still belongs to. | ADR-017 | 10 | `notifications.db.test.ts` › not the actor; each user sees only their own (404 for others); removed/departed members no longer see the org; cross-tenant; title length guard; keyset pagination bounds |
+| NOTIF-005 | A notification failure does not silently corrupt the originating transaction. | architecture/NOTIFICATION_ARCHITECTURE.md | 10 | `notifications.db.test.ts` › a failing notify rolls the member add back |
 
 ## SaaS subscriptions
 
@@ -187,7 +188,7 @@ These are implied by the specs but unclear. Do not implement a guess. Resolve ea
 | OQ-08 | Budget "actual": is it derived from APPROVED expenses (and income?) matched by category and period? | finance/BUDGETING.md | 08 |
 | OQ-09 | Collection "progress": is there a target amount? Is progress computed from linked income records? | finance/COLLECTION_MANAGEMENT.md | 08 |
 | OQ-10 | Unlisted: is the organisation reachable by direct link? Can community users follow Private or Unlisted organisations? What do followers see? | modules/organisation/ORGANISATION_PROFILE.md, modules/community/COMMUNITY_AND_DISCOVERY.md | 05 |
-| OQ-11 | Who receives each notification event (e.g. "event publication": followers or members; "subscription changes": owner only)? Do community users receive notifications? | architecture/NOTIFICATION_ARCHITECTURE.md | 10 |
+| OQ-11 | ~~Resolved by ADR-017 (all management members, minimal content; community users none).~~ Who receives each notification event (e.g. "event publication": followers or members; "subscription changes": owner only)? Do community users receive notifications? | architecture/NOTIFICATION_ARCHITECTURE.md | 10 |
 | OQ-12 | Bahasa Melayu/English localisation has no owning phase. When is the i18n framework introduced, and must every phase ship both languages? | architecture/LOCALISATION_AND_TIMEZONE.md | 00–09 |
 | OQ-13 | ~~Resolved by ADR-016 §4.~~ Under ADR-006, can a user be staff in org A and owner of org B? Does "actively manages" cover admin/treasurer roles too? Is organisation switching needed? | ADR-006, saas/ORGANISATION_ACCOUNT_MODEL.md | 02 |
 | OQ-14 | Concrete "safe file upload" rules: allowed types, size limits, malware scanning. | architecture/SECURITY_ARCHITECTURE.md, ADR-014 | 05, 08 |
