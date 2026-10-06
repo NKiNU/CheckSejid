@@ -1,7 +1,7 @@
 # ADR-022-FINANCE_STATE_MACHINE_AND_SCOPE
 
 ## Status
-Accepted (2026-10-06) by the product owner. Closes OQ-06, OQ-07, OQ-08 and OQ-09. §8 lists implementer defaults that the product owner has not yet confirmed. Reverse any of them by amending this ADR.
+Accepted (2026-10-06) by the product owner. Closes OQ-06, OQ-07, OQ-08 and OQ-09. §8 (implementer defaults) confirmed by the product owner on 2026-10-06 (OQ-21).
 
 ## Context
 - `finance/FINANCIAL_STATE_MACHINE.md`: "DRAFT → SUBMITTED → PENDING_APPROVAL → APPROVED. PENDING_APPROVAL → REJECTED. Permitted earlier states may → VOIDED. Transitions are explicit and permission-checked. Invalid transitions are rejected. Approved records are not silently edited/deleted; corrections are auditable."
@@ -65,7 +65,7 @@ A collection has `purpose`, an optional `targetAmount` (minor units), a currency
 ### 7. Money (FIN-001/002)
 Amounts are positive integer minor units (BIGINT), at most 10^13, with an ISO 4217 currency (default MYR, ADR-011). Totals are computed in PostgreSQL (`SUM` over BIGINT) and are tenant-scoped (TENANT-007). The API returns minor units as JSON integers.
 
-### 8. Implementer defaults (not yet confirmed by the product owner)
+### 8. Implementer defaults (confirmed 2026-10-06)
 - Only the creator edits or submits their own DRAFT. Others with `finance.void` can cancel it.
 - A record's category must belong to the same organisation, be active, and match the record's kind (income categories for income; expense categories for expenses and budgets).
 - Lists are bounded and keyset-paginated (SEC-006).

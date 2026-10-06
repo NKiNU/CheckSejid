@@ -1,7 +1,7 @@
 # ADR-023-ISLAMIC_FEATURES_LOCATION_HIJRI_QIBLA
 
 ## Status
-Accepted (2026-10-06) by the product owner for §1 and §2 (closes OQ-16 and the ADR-012 e-Solat confirmation). §3 and §4 are implementer choices that the product owner has not yet confirmed. Amends ADR-012 (location context).
+Accepted (2026-10-06) by the product owner for §1 and §2 (closes OQ-16 and the ADR-012 e-Solat confirmation). §3 and §4 confirmed by the product owner on 2026-10-06 (OQ-21). Amends ADR-012 (location context).
 
 ## Context
 - `modules/islamic-features/PRAYER_TIMES.md`, `HIJRI_CALENDAR.md`, `QIBLA.md`, `ISLAMIC_FEATURES_OVERVIEW.md`; ADR-012 (hybrid JAKIM + calculation, provenance, explicit caching).
@@ -26,12 +26,12 @@ Product-owner answers (2026-10-06):
 - Refresh is explicit: an in-process daily job (started by the server, not in tests) fetches the next year's timetable for every zone already in the cache during December. Fetch failures are logged without secrets, and cached data keeps being served.
 - Times are returned as UTC instants plus the timezone they are rendered in (Asia/Kuala_Lumpur for JAKIM zones; the visitor's browser timezone, validated as an IANA name, for calculated times).
 
-### 3. Hijri (implementer choice)
+### 3. Hijri (confirmed 2026-10-06)
 - For JAKIM responses, the Hijri date is JAKIM's own, labelled "Hijri (JAKIM)".
 - Otherwise it is computed with the built-in Umm al-Qura calendar (`Intl`, `islamic-umalqura`), labelled "Hijri (Umm al-Qura calculation; local moon sighting may differ by a day)".
 - Gregorian and Hijri dates are always labelled separately (ISL-005/006).
 
-### 4. Qibla (implementer choice)
+### 4. Qibla (confirmed 2026-10-06)
 Computed in the browser from the device location (great-circle initial bearing to the Kaaba, 21.4225° N, 39.8262° E). The location never leaves the device. Without location, the UI says "Location unavailable" and shows no direction. It says that accuracy depends on the device compass.
 
 ## Consequence

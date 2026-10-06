@@ -100,8 +100,8 @@ Rules:
 | ID | Requirement | Source | Phase | Tests |
 |---|---|---|---|---|
 | OPS-001 | Planning records programmes with objectives, dates and status. | modules/operations/OPERATIONS.md | 07 | `operations.db.test.ts` › programmes |
-| OPS-002 | Tasks support assignment, due date and status. | modules/operations/OPERATIONS.md | 07 | `operations.db.test.ts` › tasks: assignment to members only, notified; the assignee may change only the status |
-| OPS-003 | Roster supports flexible people/time assignments. | modules/operations/OPERATIONS.md | 07 | `operations.db.test.ts` › roster |
+| OPS-002 | Tasks support assignment, due date and status. | modules/operations/OPERATIONS.md | 07 | `operations.db.test.ts` › tasks: assignment to members only, notified; the assignee may change only the status; no delete, cancel via status (ADR-024 §5) |
+| OPS-003 | Roster supports flexible people/time assignments. | modules/operations/OPERATIONS.md | 07 | `operations.db.test.ts` › roster (cancelled, never deleted; cancelled entries stay listed and are frozen, ADR-024 §5) |
 | OPS-004 | Operations models do not hard-code Masjid-specific job titles. | modules/operations/OPERATIONS.md | 07 | Free-text `duty` (no enum); `operations.db.test.ts` › roster uses "Imam (Subuh)"/"Bilal" as data only |
 | OPS-005 | Operations management is permission-checked (e.g. `operations.manage`). | architecture/ROLE_PERMISSION_MATRIX.md; PHASE_07 acceptance | 07 | `operations.db.test.ts` › entitlement, lifecycle and permission guards are separate; non-managers 403 |
 
@@ -204,5 +204,5 @@ These are implied by the specs but unclear. Do not implement a guess. Resolve ea
 | OQ-18 | Production targets: backup RPO/RTO, monitoring/alerting expectations. | implementation-roadmap/PHASE_12_PRODUCTION.md | 12 |
 | OQ-19 | Break-glass (audited) platform access to tenant data: is it ever allowed? (Not in MVP per ADR-015.) | ADR-015 §5 | post-MVP |
 | OQ-20 | ~~Deferred by ADR-016 §4 (direct add stays in MVP; invites after Phase 10).~~ Invitation/consent flow for adding members (today an owner adds an existing user directly). | Phase 02 review | 04 |
-| OQ-21 | ADR-024 (operations status sets, fields, deletion rules) is Proposed: confirm or amend. ADR-022 §8 and ADR-023 §3/§4 hold implementer defaults awaiting confirmation. | ADR-022, ADR-023, ADR-024 | 07, 08, 09 (built with the defaults) |
-| OQ-22 | Phase 12: public-read policy for the `public/` object prefix (or a separate public bucket/CDN), and malware scanning of uploads before production (ADR-020). | ADR-014, ADR-020 | 12 |
+| OQ-21 | ~~Resolved 2026-10-06: ADR-024 Accepted (§5 amended: tasks and roster entries are cancelled, never deleted); ADR-022 §8 and ADR-023 §3/§4 confirmed.~~ ADR-024 (operations status sets, fields, deletion rules) is Proposed: confirm or amend. ADR-022 §8 and ADR-023 §3/§4 hold implementer defaults awaiting confirmation. | ADR-022, ADR-023, ADR-024 | 07, 08, 09 (built with the defaults) |
+| OQ-22 | ~~Resolved by ADR-025 (CloudFront in front of a private bucket; ClamAV scan on upload). Built in Phase 12.~~ Phase 12: public-read policy for the `public/` object prefix (or a separate public bucket/CDN), and malware scanning of uploads before production (ADR-020). | ADR-014, ADR-020 | 12 |

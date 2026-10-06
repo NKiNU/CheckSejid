@@ -129,12 +129,6 @@ export async function setTaskStatus(actor: Actor, id: string, status: TaskStatus
   return taskView(await db.task.update({ where: { id }, data: { status } }));
 }
 
-export async function deleteTask(actor: Actor, id: string) {
-  const db = forTenant(actor.organisationId);
-  await loadTask(db, id);
-  await db.task.deleteMany({ where: { id } });
-}
-
 // ---- roster (OPS-003) ----
 type RosterRow = Prisma.RosterEntryGetPayload<object>;
 const rosterView = ({ organisationId: _o, ...r }: RosterRow) => r;
@@ -143,6 +137,13 @@ export type RosterInput = { userId: string; duty: string; startsAt: Date; endsAt
 async function loadRoster(db: TenantDb, id: string) {
   const r = await db.rosterEntry.findUnique({ where: { id } });
   if (!r) throw rosterNotFound();
+  return r;
+}
+
+// ADR-024 §5: a cancelled entry is history; it is never changed again.
+async function loadOpenRoster(db: TenantDb, id: string) {
+  const r = await loadRoster(db, id);
+  if (r.cancelledAt) throw new HttpError(409, "ROSTER_ENTRY_CANCELLED", "This roster entry is cancelled");
   return r;
 }
 
@@ -177,7 +178,7 @@ export async function createRoster(actor: Actor, input: RosterInput) {
 export async function updateRoster(actor: Actor, id: string, change: Partial<RosterInput>) {
   return prisma.$transaction(async (tx) => {
     const db = forTenant(actor.organisationId, tx);
-    const before = await loadRoster(db, id);
+    const before = await loadOpenRoster(db, id);
     checkRange(change.startsAt ?? before.startsAt, change.endsAt ?? before.endsAt, true, "endsAt must be after startsAt");
     if (change.userId) await assertMember(db, actor.organisationId, change.userId);
     if (change.programmeId) await assertProgramme(db, change.programmeId);
@@ -187,8 +188,11 @@ export async function updateRoster(actor: Actor, id: string, change: Partial<Ros
   });
 }
 
-export async function deleteRoster(actor: Actor, id: string) {
+// ADR-024 §5 (amended): cancel instead of delete. Conditional update, so two concurrent cancels cannot both win.
+export async function cancelRoster(actor: Actor, id: string) {
   const db = forTenant(actor.organisationId);
-  await loadRoster(db, id);
-  await db.rosterEntry.deleteMany({ where: { id } });
+  await loadOpenRoster(db, id);
+  const { count } = await db.rosterEntry.updateMany({ where: { id, cancelledAt: null }, data: { cancelledAt: new Date() } });
+  if (count === 0) throw new HttpError(409, "ROSTER_ENTRY_CANCELLED", "This roster entry is cancelled");
+  return rosterView(await loadRoster(db, id));
 }
