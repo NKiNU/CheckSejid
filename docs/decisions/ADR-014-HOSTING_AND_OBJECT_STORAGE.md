@@ -3,6 +3,8 @@
 ## Status
 Accepted (2026-10-05) by the product owner, with the recommended option. Option B (AWS ap-southeast-5); the data-residency/PDPA check remains a Phase 12 task. Storage rules apply from Phase 05.
 
+**Amended (2026-10-06) by the product owner: Option D (DigitalOcean Singapore) replaces Option B.** One Droplet runs the application and PostgreSQL; files are in DigitalOcean Spaces (S3 API). The product owner accepts that tenant data is stored in Singapore (cross-border transfer under the PDPA) and will confirm the obligations with their own adviser. Production details: ADR-026.
+
 ## Context
 Spec lines that drive this decision:
 - `architecture/SYSTEM_ARCHITECTURE.md`: "React/Vite frontend, Node.js/Express backend, approved database persistence, REST APIs and object storage … Introduce Redis, queues, microservices or distributed systems only when measurable requirements justify them."
@@ -49,5 +51,5 @@ Rules that hold whichever option is chosen:
 
 ## Consequence
 - Phase 05 and Phase 08 use the S3 module against a local S3-compatible service in development (e.g. MinIO in docker-compose).
-- Phase 12 adds a Dockerfile, a deploy workflow, a backup and restore runbook with one tested restore, and monitoring (uptime check plus error logging without secrets).
+- Phase 12 adds a Dockerfile, a deploy workflow, a backup and restore runbook with one tested restore, and monitoring (uptime check plus error logging without secrets). With Option D (2026-10-06 amendment), the frontend and API share one domain on the Droplet (path routing), which satisfies the same-site rule.
 - Open questions: the exact upload size limit and allowed file types; whether malware scanning is required; backup RPO/RTO targets; the retention period for deleted or archived tenant data. The specs give none of these.
