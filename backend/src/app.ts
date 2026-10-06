@@ -4,6 +4,7 @@ import { errorHandler, notFound } from "./errors.ts";
 import { financeRouter } from "./modules/finance/finance.routes.ts";
 import { hubRouter } from "./modules/hub/hub.routes.ts";
 import { identityRouter } from "./modules/identity/identity.routes.ts";
+import { islamicRouter } from "./modules/islamic/islamic.routes.ts";
 import { notificationsRouter } from "./modules/notifications/notifications.routes.ts";
 import { publicRouter } from "./modules/public/public.routes.ts";
 import { operationsRouter } from "./modules/operations/operations.routes.ts";
@@ -37,6 +38,7 @@ app.use(publicRouter);
 app.use(hubRouter);
 app.use(operationsRouter);
 app.use(financeRouter);
+app.use(islamicRouter);
 
 app.use(notFound);
 app.use(errorHandler);
