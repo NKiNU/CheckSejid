@@ -17,7 +17,8 @@ let accessToken: string | null = null
 
 export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
-  if (init.body) headers.set('Content-Type', 'application/json')
+  // JSON bodies are strings; file uploads (Blob/File) are sent raw and the server sniffs their type (ADR-020).
+  if (typeof init.body === 'string') headers.set('Content-Type', 'application/json')
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
   const res = await fetch(path, { ...init, headers, credentials: 'same-origin' })
   if (res.status === 204) return undefined as T

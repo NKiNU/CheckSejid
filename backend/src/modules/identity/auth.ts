@@ -43,6 +43,12 @@ export function hashRefreshToken(token: string): string {
 
 const unauthenticated = () => new HttpError(401, "UNAUTHENTICATED", "Authentication required");
 
+// Public endpoints whose answer depends on whether the viewer is logged in (ADR-019: Unlisted pages).
+// No Authorization header → anonymous (req.auth unset); a header that is present but invalid → 401,
+// so a stale token never silently downgrades to anonymous.
+export const optionalAuth: RequestHandler = (req, res, next) =>
+  req.headers.authorization === undefined ? next() : requireAuth(req, res, next);
+
 // AUTH-002: every protected endpoint uses this. Reusable by later phases.
 export const requireAuth: RequestHandler = async (req, _res, next) => {
   const [scheme, token] = req.headers.authorization?.split(" ") ?? [];

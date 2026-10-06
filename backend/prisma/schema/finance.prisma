@@ -1,0 +1,192 @@
+// Phase 08 (ADR-022) — organisation finance. Tenant-owned (TENANT-008). A separate domain from
+// Masyarakat billing (SAAS-001): nothing here references Plan/Subscription.
+// Money: BIGINT minor units + ISO 4217 currency (ADR-011). Records are never hard-deleted (FIN-011).
+
+// FIN-009 + ADR-022 §2. SUBMITTED is passed through inside the submit action.
+enum FinanceState {
+  DRAFT
+  SUBMITTED
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  VOIDED
+}
+
+enum CategoryKind {
+  INCOME
+  EXPENSE
+}
+
+enum CollectionStatus {
+  OPEN
+  CLOSED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+  VOID_APPROVED
+  VOID_REJECTED
+}
+
+model FinancialCategory {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  name           String
+  kind           CategoryKind
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  incomes  Income[]
+  expenses Expense[]
+  budgets  Budget[]
+
+  @@unique([organisationId, kind, name])
+  @@unique([id, organisationId])
+}
+
+model Collection {
+  id             String           @id @default(uuid()) @db.Uuid
+  organisationId String           @db.Uuid
+  organisation   Organisation     @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  purpose        String
+  description    String?
+  targetAmount   BigInt? // ADR-022 §6: optional target, minor units
+  currency       String           @default("MYR")
+  status         CollectionStatus @default(OPEN)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  incomes Income[]
+
+  @@unique([id, organisationId])
+  @@index([organisationId, createdAt])
+}
+
+// The workflow columns are identical on Income, Expense and Budget (finance.service.ts handles them generically).
+model Income {
+  id                String            @id @default(uuid()) @db.Uuid
+  organisationId    String            @db.Uuid
+  organisation      Organisation      @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  amount            BigInt
+  currency          String            @default("MYR")
+  receivedOn        DateTime          @db.Date
+  categoryId        String            @db.Uuid
+  category          FinancialCategory @relation(fields: [categoryId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  collectionId      String?           @db.Uuid
+  collection        Collection?       @relation(fields: [collectionId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  description       String
+  reference         String?
+  state             FinanceState      @default(DRAFT)
+  createdById       String            @db.Uuid
+  submittedById     String?           @db.Uuid
+  submittedAt       DateTime?
+  decidedById       String?           @db.Uuid
+  decidedAt         DateTime?
+  voidRequestedById String?           @db.Uuid
+  voidRequestedAt   DateTime?
+  voidReason        String?
+  voidedAt          DateTime?
+  copiedFromId      String?           @db.Uuid
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([organisationId, state])
+  @@index([organisationId, collectionId, state])
+}
+
+model Expense {
+  id                String              @id @default(uuid()) @db.Uuid
+  organisationId    String              @db.Uuid
+  organisation      Organisation        @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  amount            BigInt
+  currency          String              @default("MYR")
+  spentOn           DateTime            @db.Date
+  categoryId        String              @db.Uuid
+  category          FinancialCategory   @relation(fields: [categoryId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  payee             String?
+  description       String
+  reference         String?
+  state             FinanceState        @default(DRAFT)
+  createdById       String              @db.Uuid
+  submittedById     String?             @db.Uuid
+  submittedAt       DateTime?
+  decidedById       String?             @db.Uuid
+  decidedAt         DateTime?
+  voidRequestedById String?             @db.Uuid
+  voidRequestedAt   DateTime?
+  voidReason        String?
+  voidedAt          DateTime?
+  copiedFromId      String?             @db.Uuid
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  attachments FinanceAttachment[]
+
+  @@unique([id, organisationId])
+  @@index([organisationId, state])
+  @@index([organisationId, categoryId, state, spentOn])
+}
+
+model Budget {
+  id                String            @id @default(uuid()) @db.Uuid
+  organisationId    String            @db.Uuid
+  organisation      Organisation      @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  name              String
+  amount            BigInt // planned amount
+  currency          String            @default("MYR")
+  periodStart       DateTime          @db.Date
+  periodEnd         DateTime          @db.Date
+  categoryId        String            @db.Uuid
+  category          FinancialCategory @relation(fields: [categoryId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  description       String
+  state             FinanceState      @default(DRAFT)
+  createdById       String            @db.Uuid
+  submittedById     String?           @db.Uuid
+  submittedAt       DateTime?
+  decidedById       String?           @db.Uuid
+  decidedAt         DateTime?
+  voidRequestedById String?           @db.Uuid
+  voidRequestedAt   DateTime?
+  voidReason        String?
+  voidedAt          DateTime?
+  copiedFromId      String?           @db.Uuid
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([organisationId, state])
+}
+
+// FIN-012 / ADR-013: one row per approval decision. recordId is polymorphic (no FK).
+model FinanceApproval {
+  id             String           @id @default(uuid()) @db.Uuid
+  organisationId String           @db.Uuid
+  organisation   Organisation     @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  recordType     String // "income" | "expense" | "budget"
+  recordId       String           @db.Uuid
+  decision       ApprovalDecision
+  actorUserId    String           @db.Uuid
+  reason         String?
+  selfApproved   Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  @@index([organisationId, recordType, recordId])
+}
+
+// FIN-005 / ADR-020: private evidence files. The object key is server-generated.
+model FinanceAttachment {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  expenseId      String       @db.Uuid
+  expense        Expense      @relation(fields: [expenseId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  objectKey      String       @unique
+  contentType    String
+  sizeBytes      Int
+  uploadedById   String       @db.Uuid
+  createdAt      DateTime     @default(now())
+
+  @@index([organisationId, expenseId])
+}

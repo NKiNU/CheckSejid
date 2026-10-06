@@ -11,7 +11,16 @@ export type Profile = {
   state: string | null
   country: string | null
 }
-export type Organisation = { id: string; name: string; isOwner: boolean; createdAt: string; status: OrgStatus } & Profile
+export type Organisation = {
+  id: string
+  name: string
+  isOwner: boolean
+  createdAt: string
+  status: OrgStatus
+  visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE'
+  logoUrl: string | null
+  coverUrl: string | null
+} & Profile
 
 export async function listMyOrganisations() {
   return (await call<{ organisations: Organisation[] }>('/orgs')).organisations

@@ -1,0 +1,41 @@
+// Phase 06 (ADR-021) — information hub. Tenant-owned (TENANT-008).
+
+// HUB-002 + ADR-021: DRAFT → PUBLISHED → ARCHIVED, ARCHIVED → PUBLISHED (republish).
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Post {
+  id             String        @id @default(uuid()) @db.Uuid
+  organisationId String        @db.Uuid
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  title          String
+  body           String
+  status         ContentStatus @default(DRAFT)
+  publishedAt    DateTime?
+  createdById    String        @db.Uuid // no FK: history outlives the author's membership
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organisationId, status, publishedAt])
+}
+
+model Event {
+  id             String        @id @default(uuid()) @db.Uuid
+  organisationId String        @db.Uuid
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  title          String
+  description    String
+  startsAt       DateTime // UTC (LOC-003)
+  endsAt         DateTime
+  location       String?
+  status         ContentStatus @default(DRAFT)
+  publishedAt    DateTime?
+  createdById    String        @db.Uuid
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organisationId, status, startsAt])
+}

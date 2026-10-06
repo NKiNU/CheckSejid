@@ -1,0 +1,12 @@
+// Phase 09 (ADR-012, ADR-023) — global reference data, not tenant data: cached JAKIM e-Solat timetables
+// shared across tenants. Visitor locations are never stored.
+model PrayerTimeCache {
+  source    String // "jakim"
+  zone      String // e.g. "WLY01"
+  date      DateTime @db.Date
+  times     Json // { imsak, fajr, syuruk, dhuhr, asr, maghrib, isha } as UTC ISO instants
+  hijri     String? // as published by the source, e.g. "1448-04-14"
+  fetchedAt DateTime @default(now())
+
+  @@id([source, zone, date])
+}

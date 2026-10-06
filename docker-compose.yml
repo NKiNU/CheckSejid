@@ -10,5 +10,20 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
 
+  # ADR-014: local S3-compatible storage for development. Create the bucket and make only its public/
+  # prefix anonymously readable, e.g. `mc anonymous set download local/masyarakat/public`.
+  storage:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: masyarakat
+      MINIO_ROOT_PASSWORD: masyarakat-dev-secret
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - storage-data:/data
+
 volumes:
   db-data:
+  storage-data:

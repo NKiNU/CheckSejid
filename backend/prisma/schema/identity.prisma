@@ -16,6 +16,7 @@ model User {
   ownedOrganisation Organisation?            @relation("OrganisationOwner")
   memberships       OrganisationMembership[]
   notifications     Notification[]
+  follows           Follow[]
 }
 
 // Only the SHA-256 hash of the opaque refresh token is stored (ADR-009).
