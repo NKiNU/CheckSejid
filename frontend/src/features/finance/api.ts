@@ -32,14 +32,10 @@ export function toMinor(input: string): number | null {
   const minor = Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0'))
   return minor > 0 ? minor : null
 }
-// 1234 → "RM 12.34" for MYR; integer arithmetic only.
-export function formatMoney(minor: number, currency = 'MYR') {
-  const sign = minor < 0 ? '-' : ''
-  const abs = Math.abs(minor)
-  const major = Math.trunc(abs / 100).toLocaleString('en-MY')
-  const label = currency === 'MYR' ? 'RM' : currency
-  return `${sign}${label} ${major}.${String(abs % 100).padStart(2, '0')}`
-}
+// 1234 → "RM1,234.00"-style text. Amounts stay integer sen everywhere else (ADR-011); only this display
+// step divides by 100 (exact for any amount toMinor accepts, and Intl rounds to 2 decimals).
+export const formatMoney = (minor: number, currency = 'MYR', locale = 'en-MY') =>
+  new Intl.NumberFormat(locale, { style: 'currency', currency }).format(minor / 100)
 
 export const listCategories = async (orgId: string) => (await call<{ categories: Category[] }>(`${base(orgId)}/categories`)).categories
 export const createCategory = async (orgId: string, data: { name: string; kind: Category['kind'] }) =>

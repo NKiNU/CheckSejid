@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useT } from '../../i18n/index.tsx'
 import * as api from './api.ts'
 
 // Phase 06: bulletin posts and events with their lifecycle. Controls follow the caller's keys; the
 // server enforces them (AUTH-003).
 export function HubPanel({ orgId, perms }: { orgId: string; perms: Set<string> }) {
+  const { t, error: errorText } = useT()
   const [posts, setPosts] = useState<api.Post[]>([])
   const [events, setEvents] = useState<api.HubEvent[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -11,12 +13,12 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: Set<string> }
   const load = () =>
     Promise.all([api.listPosts(orgId), api.listEvents(orgId)]).then(
       ([p, e]) => (setPosts(p), setEvents(e)),
-      (e) => setError(e instanceof Error ? e.message : 'Something went wrong'),
+      (e) => setError(errorText(e)),
     )
   useEffect(() => {
     Promise.all([api.listPosts(orgId), api.listEvents(orgId)]).then(
       ([p, e]) => (setPosts(p), setEvents(e)),
-      (e) => setError(e instanceof Error ? e.message : 'Something went wrong'),
+      (e) => setError(errorText(e)),
     )
   }, [orgId])
 
@@ -26,7 +28,7 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: Set<string> }
       await fn()
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(errorText(e))
     }
   }
 
@@ -53,16 +55,16 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: Set<string> }
 
   const row = (kind: api.Kind, item: api.Post | api.HubEvent) => (
     <li key={item.id}>
-      {item.title} [{item.status}]
+      {item.title} [{t(`state.${item.status}`)}]
       {perms.has(kind === 'post' ? 'bulletin.publish' : 'event.publish') &&
         api.nextActions(item.status).map((a) => (
           <button key={a} type="button" onClick={() => run(() => api.transition(orgId, kind, item.id, a))}>
-            {item.status === 'ARCHIVED' ? 'Republish' : a}
+            {item.status === 'ARCHIVED' ? t('action.republish') : t(`action.${a}`)}
           </button>
         ))}
       {item.status === 'DRAFT' && perms.has(kind === 'post' ? 'bulletin.manage' : 'event.manage') && (
         <button type="button" onClick={() => run(() => api.removeDraft(orgId, kind, item.id))}>
-          Delete draft
+          {t('hub.deleteDraft')}
         </button>
       )}
     </li>
@@ -70,29 +72,29 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: Set<string> }
 
   return (
     <section>
-      <h3>Announcements</h3>
+      <h3>{t('hub.announcements')}</h3>
       <ul>{posts.map((p) => row('post', p))}</ul>
       {perms.has('bulletin.manage') && (
         <form onSubmit={addPost}>
-          <input name="title" placeholder="Title" required maxLength={200} />
-          <textarea name="body" placeholder="Text" required maxLength={20000} />
-          <button type="submit">Save draft</button>
+          <input name="title" placeholder={t('common.title')} required maxLength={200} />
+          <textarea name="body" placeholder={t('hub.text')} required maxLength={20000} />
+          <button type="submit">{t('common.saveDraft')}</button>
         </form>
       )}
-      <h3>Events</h3>
+      <h3>{t('hub.events')}</h3>
       <ul>{events.map((e) => row('event', e))}</ul>
       {perms.has('event.manage') && (
         <form onSubmit={addEvent}>
-          <input name="title" placeholder="Title" required maxLength={200} />
-          <input name="description" placeholder="Description" maxLength={20000} />
+          <input name="title" placeholder={t('common.title')} required maxLength={200} />
+          <input name="description" placeholder={t('common.description')} maxLength={20000} />
           <label>
-            Starts <input name="startsAt" type="datetime-local" required />
+            {t('hub.starts')} <input name="startsAt" type="datetime-local" required />
           </label>
           <label>
-            Ends <input name="endsAt" type="datetime-local" required />
+            {t('hub.ends')} <input name="endsAt" type="datetime-local" required />
           </label>
-          <input name="location" placeholder="Location (optional)" maxLength={300} />
-          <button type="submit">Save draft</button>
+          <input name="location" placeholder={t('hub.location')} maxLength={300} />
+          <button type="submit">{t('common.saveDraft')}</button>
         </form>
       )}
       {error && <p role="alert">{error}</p>}

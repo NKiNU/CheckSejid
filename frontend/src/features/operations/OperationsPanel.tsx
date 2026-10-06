@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useT } from '../../i18n/index.tsx'
 import { listMembers, type Member } from '../rbac/api.ts'
-import { errorMessage } from '../subscriptions/api.ts'
 import * as api from './api.ts'
 
 // Phase 07: tasks (assign, status) and roster. Plan limits show an upgrade message (ADR-018).
 export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: Set<string> }) {
+  const { t, error: errorText, dateTime, time, date } = useT()
   const [tasks, setTasks] = useState<api.Task[]>([])
   const [roster, setRoster] = useState<api.RosterEntry[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -13,16 +14,16 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
 
   const load = () =>
     Promise.all([api.listTasks(orgId), api.listRoster(orgId), listMembers(orgId)]).then(
-      ([t, r, m]) => (setTasks(t), setRoster(r), setMembers(m)),
-      (e) => setError(errorMessage(e)),
+      ([tk, r, m]) => (setTasks(tk), setRoster(r), setMembers(m)),
+      (e) => setError(errorText(e)),
     )
   useEffect(() => {
     Promise.all([api.listTasks(orgId), api.listRoster(orgId), listMembers(orgId)]).then(
-      ([t, r, m]) => (setTasks(t), setRoster(r), setMembers(m)),
-      (e) => setError(errorMessage(e)),
+      ([tk, r, m]) => (setTasks(tk), setRoster(r), setMembers(m)),
+      (e) => setError(errorText(e)),
     )
   }, [orgId])
-  const name = (userId: string | null) => members.find((m) => m.userId === userId)?.displayName ?? (userId ? 'former member' : 'unassigned')
+  const name = (userId: string | null) => members.find((m) => m.userId === userId)?.displayName ?? (userId ? t('ops.formerMember') : t('ops.unassigned'))
 
   const run = async (fn: () => Promise<unknown>, form?: HTMLFormElement) => {
     setError(null)
@@ -31,7 +32,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
       form?.reset()
       await load()
     } catch (e) {
-      setError(errorMessage(e))
+      setError(errorText(e))
     }
   }
   function addTask(e: FormEvent<HTMLFormElement>) {
@@ -54,40 +55,42 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
 
   return (
     <section>
-      <h3>Tasks</h3>
+      <h3>{t('ops.tasks')}</h3>
       <ul>
-        {tasks.map((t) => (
-          <li key={t.id}>
-            {t.title} — {name(t.assigneeUserId)} {t.dueDate && `(due ${t.dueDate})`}{' '}
-            {api.canChangeStatus(t, myUserId, perms) ? (
-              <select value={t.status} onChange={(e) => run(() => api.setTaskStatus(orgId, t.id, e.target.value as api.TaskStatus))}>
+        {tasks.map((task) => (
+          <li key={task.id}>
+            {task.title} — {name(task.assigneeUserId)} {task.dueDate && `(${t('ops.due', { date: date(task.dueDate) })})`}{' '}
+            {api.canChangeStatus(task, myUserId, perms) ? (
+              <select value={task.status} onChange={(e) => run(() => api.setTaskStatus(orgId, task.id, e.target.value as api.TaskStatus))}>
                 {api.TASK_STATUSES.map((s) => (
-                  <option key={s}>{s}</option>
+                  <option key={s} value={s}>
+                    {t(`state.${s}`)}
+                  </option>
                 ))}
               </select>
             ) : (
-              t.status
+              t(`state.${task.status}`)
             )}
           </li>
         ))}
       </ul>
       {manage && (
         <form onSubmit={addTask}>
-          <input name="title" placeholder="Task" required maxLength={200} />
+          <input name="title" placeholder={t('ops.task')} required maxLength={200} />
           <select name="assignee" defaultValue="">
-            <option value="">Unassigned</option>
+            <option value="">{t('ops.unassigned')}</option>
             {memberOptions}
           </select>
           <input name="dueDate" type="date" />
-          <button type="submit">Add task</button>
+          <button type="submit">{t('ops.addTask')}</button>
         </form>
       )}
-      <h3>Roster</h3>
+      <h3>{t('ops.roster')}</h3>
       <ul>
         {roster.map((r) => (
           <li key={r.id}>
-            {new Date(r.startsAt).toLocaleString()} – {new Date(r.endsAt).toLocaleTimeString()}: {r.duty} — {name(r.userId)}
-            {r.cancelledAt && ' (cancelled)'}
+            {dateTime(r.startsAt)} – {time(r.endsAt)}: {r.duty} — {name(r.userId)}
+            {r.cancelledAt && ` (${t('ops.cancelled')})`}
           </li>
         ))}
       </ul>
@@ -95,14 +98,14 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
         <form onSubmit={addRoster}>
           <select name="userId" required defaultValue="">
             <option value="" disabled>
-              Person…
+              {t('ops.person')}
             </option>
             {memberOptions}
           </select>
-          <input name="duty" placeholder="Duty (e.g. Imam, Cleaning)" required maxLength={100} />
+          <input name="duty" placeholder={t('ops.duty')} required maxLength={100} />
           <input name="startsAt" type="datetime-local" required />
           <input name="endsAt" type="datetime-local" required />
-          <button type="submit">Add to roster</button>
+          <button type="submit">{t('ops.addRoster')}</button>
         </form>
       )}
       {error && <p role="alert">{error}</p>}

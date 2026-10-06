@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../../i18n/index.tsx'
 import * as api from './api.ts'
 
 const ZONE_KEY = 'masyarakat.jakimZone' // the visitor's own browser only (ADR-023 §1)
@@ -9,18 +10,11 @@ const readZone = () => {
     return ''
   }
 }
-const LABELS: [keyof api.PrayerTimes['times'], string][] = [
-  ['imsak', 'Imsak'],
-  ['fajr', 'Subuh'],
-  ['syuruk', 'Syuruk'],
-  ['dhuhr', 'Zohor'],
-  ['asr', 'Asar'],
-  ['maghrib', 'Maghrib'],
-  ['isha', 'Isyak'],
-]
+const PRAYERS = ['imsak', 'fajr', 'syuruk', 'dhuhr', 'asr', 'maghrib', 'isha'] as const
 
 // Phase 09: prayer times for the visitor's zone or location, with provenance; Qibla from the device.
 export function IslamicPanel() {
+  const { t, locale, number, error: errorText } = useT()
   const [zone, setZone] = useState(readZone)
   const [times, setTimes] = useState<api.PrayerTimes | null>(null)
   const [qibla, setQibla] = useState<number | null>(null)
@@ -31,7 +25,7 @@ export function IslamicPanel() {
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
       const pos = useLocation ? await api.currentPosition() : undefined
-      if (!useLocation && !zone) return setError('Choose your zone or use your location')
+      if (!useLocation && !zone) return setError(t('prayer.needZone'))
       try {
         if (zone) localStorage.setItem(ZONE_KEY, zone)
       } catch {
@@ -39,7 +33,7 @@ export function IslamicPanel() {
       }
       setTimes(await api.getPrayerTimes({ zone: useLocation ? undefined : zone, ...pos, tz }))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(errorText(e))
     }
   }
 
@@ -50,15 +44,19 @@ export function IslamicPanel() {
       setQibla(api.qiblaBearing(lat, lng))
     } catch (e) {
       setQibla(null)
-      setError(e instanceof Error ? e.message : 'Location unavailable')
+      setError(errorText(e))
     }
   }
 
+  // The server sends English labels; show them in the current language, keeping Hijri and Gregorian distinct.
+  const hijriLabel = times && t(times.hijri.label === 'Hijri (JAKIM)' ? 'prayer.hijriJakim' : 'prayer.hijriCalc')
+  const source = !times ? '' : times.source.kind === 'jakim' ? t('prayer.srcJakim', { zone: times.source.zone }) : t('prayer.srcCalc')
+
   return (
     <section>
-      <h2>Prayer times</h2>
-      <select value={zone} onChange={(e) => setZone(e.target.value)} aria-label="JAKIM zone">
-        <option value="">Choose your zone…</option>
+      <h2>{t('prayer.heading')}</h2>
+      <select value={zone} onChange={(e) => setZone(e.target.value)} aria-label={t('prayer.zone')}>
+        <option value="">{t('prayer.chooseZone')}</option>
         {Object.entries(api.JAKIM_ZONES).map(([state, zones]) => (
           <optgroup key={state} label={state}>
             {zones.map((z) => (
@@ -68,36 +66,36 @@ export function IslamicPanel() {
         ))}
       </select>
       <button type="button" onClick={() => show(false)}>
-        Show for zone
+        {t('prayer.showZone')}
       </button>
       <button type="button" onClick={() => show(true)}>
-        Use my location
+        {t('prayer.useLocation')}
       </button>
       {times && (
         <div>
           <p>
-            {times.gregorian.label}: {times.gregorian.date} · {times.hijri.label}: {times.hijri.date}
+            {t('prayer.gregorian')}: {times.gregorian.date} · {hijriLabel}: {times.hijri.date}
           </p>
           <table>
             <tbody>
-              {LABELS.filter(([k]) => times.times[k]).map(([k, label]) => (
+              {PRAYERS.filter((k) => times.times[k]).map((k) => (
                 <tr key={k}>
-                  <th>{label}</th>
-                  <td>{api.formatTime(times.times[k]!, times.timezone)}</td>
+                  <th>{t(`prayer.${k}`)}</th>
+                  <td>{api.formatTime(times.times[k]!, times.timezone, locale)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p>
-            Source: {times.source.label}. Times shown in {times.timezone}. Follow your local religious authority where it differs.
+            {t('prayer.source', { source, tz: times.timezone })}
           </p>
         </div>
       )}
-      <h2>Qibla</h2>
+      <h2>{t('qibla.heading')}</h2>
       <button type="button" onClick={findQibla}>
-        Find Qibla direction
+        {t('qibla.find')}
       </button>
-      {qibla !== null && <p>Qibla: {qibla.toFixed(1)}° from true north. Accuracy depends on your device's compass and location.</p>}
+      {qibla !== null && <p>{t('qibla.result', { deg: number(qibla, 1) })}</p>}
       {error && <p role="alert">{error}</p>}
     </section>
   )

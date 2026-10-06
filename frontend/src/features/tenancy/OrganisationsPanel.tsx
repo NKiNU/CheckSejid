@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useT } from '../../i18n/index.tsx'
 import { FinancePanel } from '../finance/FinancePanel.tsx'
 import { HubPanel } from '../hub/HubPanel.tsx'
 import { OperationsPanel } from '../operations/OperationsPanel.tsx'
@@ -12,11 +13,12 @@ import * as api from './api.ts'
 // The current organisation is loaded through the tenant-scoped GET /orgs/:id, so the
 // server decides access; the client only remembers which id was picked.
 export function OrganisationsPanel({ userId }: { userId: string }) {
+  const { t, error: errorText } = useT()
   const [orgs, setOrgs] = useState<api.Organisation[]>([])
   const [current, setCurrent] = useState<api.Organisation | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const fail = (e: unknown) => setError(e instanceof Error ? e.message : 'Something went wrong')
+  const fail = (e: unknown) => setError(errorText(e))
 
   useEffect(() => {
     api.listMyOrganisations().then(setOrgs).catch(fail)
@@ -47,13 +49,13 @@ export function OrganisationsPanel({ userId }: { userId: string }) {
 
   return (
     <section>
-      <h2>Organisations</h2>
+      <h2>{t('org.heading')}</h2>
       {orgs.length > 0 && (
         <label>
-          Current organisation{' '}
+          {t('org.current')}{' '}
           <select value={current?.id ?? ''} onChange={(e) => select(e.target.value)}>
             <option value="" disabled>
-              Choose…
+              {t('common.choose')}
             </option>
             {orgs.map((o) => (
               <option key={o.id} value={o.id}>
@@ -65,8 +67,8 @@ export function OrganisationsPanel({ userId }: { userId: string }) {
       )}
       {current && (
         <p>
-          Managing <strong>{current.name}</strong>
-          {current.isOwner ? ' (owner)' : ''} — {current.status}
+          {t('org.managing')} <strong>{current.name}</strong>
+          {current.isOwner ? ` (${t('org.owner')})` : ''} — {t(`state.${current.status}`)}
         </p>
       )}
       {current && <LifecyclePanel key={current.id} org={current} onChange={setCurrent} />}
@@ -86,9 +88,9 @@ export function OrganisationsPanel({ userId }: { userId: string }) {
       {!orgs.some((o) => o.isOwner) && (
         <form onSubmit={create}>
           <label>
-            New organisation name <input name="name" required maxLength={200} />
+            {t('org.newName')} <input name="name" required maxLength={200} />
           </label>
-          <button type="submit">Create organisation</button>
+          <button type="submit">{t('org.create')}</button>
         </form>
       )}
       {error && <p role="alert">{error}</p>}
@@ -99,6 +101,7 @@ export function OrganisationsPanel({ userId }: { userId: string }) {
 // Phase 04: profile form + "Complete onboarding" while DRAFT/ONBOARDING, "Archive" for the owner.
 // Controls are hidden by permission and status; the server enforces both (AUTH-003, ORG-009).
 function LifecyclePanel({ org, onChange }: { org: api.Organisation; onChange: (o: api.Organisation) => void }) {
+  const { t, error: errorText } = useT()
   const [perms, setPerms] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
@@ -110,7 +113,7 @@ function LifecyclePanel({ org, onChange }: { org: api.Organisation; onChange: (o
     try {
       onChange(await fn())
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(errorText(e))
     }
   }
   const onboarding = org.status === 'DRAFT' || org.status === 'ONBOARDING'
@@ -139,38 +142,40 @@ function LifecyclePanel({ org, onChange }: { org: api.Organisation; onChange: (o
     <div>
       {onboarding && perms.has('organisation.update') && (
         <form onSubmit={save}>
-          <h3>Organisation profile</h3>
+          <h3>{t('org.profile')}</h3>
           <label>
-            Type{' '}
+            {t('org.type')}{' '}
             <select name="type" defaultValue={org.type ?? ''}>
-              <option value="">Choose…</option>
-              {api.ORG_TYPES.map((t) => (
-                <option key={t}>{t}</option>
+              <option value="">{t('common.choose')}</option>
+              {api.ORG_TYPES.map((ty) => (
+                <option key={ty} value={ty}>
+                  {t(`orgType.${ty}`)}
+                </option>
               ))}
             </select>
           </label>
           <label>
-            Description <textarea name="description" maxLength={2000} defaultValue={org.description ?? ''} />
+            {t('common.description')} <textarea name="description" maxLength={2000} defaultValue={org.description ?? ''} />
           </label>
           <label>
-            Contact email <input name="contactEmail" type="email" maxLength={254} defaultValue={org.contactEmail ?? ''} />
+            {t('org.contactEmail')} <input name="contactEmail" type="email" maxLength={254} defaultValue={org.contactEmail ?? ''} />
           </label>
           <label>
-            Contact phone <input name="contactPhone" maxLength={30} defaultValue={org.contactPhone ?? ''} />
+            {t('org.contactPhone')} <input name="contactPhone" maxLength={30} defaultValue={org.contactPhone ?? ''} />
           </label>
           <label>
-            Address <input name="addressLine" maxLength={300} defaultValue={org.addressLine ?? ''} />
+            {t('org.address')} <input name="addressLine" maxLength={300} defaultValue={org.addressLine ?? ''} />
           </label>
           <label>
-            State <input name="state" maxLength={100} defaultValue={org.state ?? ''} />
+            {t('org.state')} <input name="state" maxLength={100} defaultValue={org.state ?? ''} />
           </label>
           <label>
-            Country (2-letter code) <input name="country" maxLength={2} pattern="[A-Za-z]{2}" defaultValue={org.country ?? ''} />
+            {t('org.country')} <input name="country" maxLength={2} pattern="[A-Za-z]{2}" defaultValue={org.country ?? ''} />
           </label>
-          <button type="submit">Save profile</button>
+          <button type="submit">{t('org.saveProfile')}</button>
           {org.status === 'ONBOARDING' && (
             <button type="button" onClick={() => run(() => api.completeOnboarding(org.id))}>
-              Complete onboarding
+              {t('org.completeOnboarding')}
             </button>
           )}
         </form>
@@ -178,9 +183,9 @@ function LifecyclePanel({ org, onChange }: { org: api.Organisation; onChange: (o
       {perms.has('organisation.archive') && (org.status === 'ACTIVE' || org.status === 'SUSPENDED') && (
         <button
           type="button"
-          onClick={() => confirm(`Archive ${org.name}? This cannot be undone.`) && run(() => api.archiveOrganisation(org.id))}
+          onClick={() => confirm(t('org.archiveConfirm', { name: org.name })) && run(() => api.archiveOrganisation(org.id))}
         >
-          Archive organisation
+          {t('org.archive')}
         </button>
       )}
       {error && <p role="alert">{error}</p>}
