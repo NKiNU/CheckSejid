@@ -10,17 +10,15 @@ services:
     volumes:
       - db-data:/var/lib/postgresql/data
 
-  # ADR-014: local S3-compatible storage for development. Create the bucket and make only its public/
-  # prefix anonymously readable, e.g. `mc anonymous set download local/masyarakat/public`.
+  # ADR-014: local S3-compatible storage for development (SeaweedFS; MinIO no longer publishes free images).
+  # No credentials are enforced, so any S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY works. Create the bucket once:
+  #   docker run --rm --network host -e AWS_ACCESS_KEY_ID=x -e AWS_SECRET_ACCESS_KEY=x amazon/aws-cli \
+  #     --endpoint-url http://localhost:9000 --region us-east-1 s3 mb s3://masyarakat
   storage:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: masyarakat
-      MINIO_ROOT_PASSWORD: masyarakat-dev-secret
+    image: chrislusf/seaweedfs
+    command: server -s3 -dir=/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:8333"
     volumes:
       - storage-data:/data
 

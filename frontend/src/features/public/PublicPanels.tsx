@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ApiError } from '../identity/api.ts'
+import { useT } from '../../i18n/index.tsx'
 import { myFeed, publicEvents, publicPosts, type FeedItem, type HubEvent, type Post } from '../hub/api.ts'
+import { ORG_TYPES } from '../tenancy/api.ts'
 import * as api from './api.ts'
-
-const message = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong')
 
 // Phase 05: discovery (PUB-001/002) and a public organisation page with follow (PUB-005, ADR-019).
 export function DiscoverPanel() {
+  const { t, error: message } = useT()
   const [result, setResult] = useState<api.PublicOrganisation[]>([])
   const [selected, setSelected] = useState<string | null>(() => new URLSearchParams(location.search).get('org'))
   const [error, setError] = useState<string | null>(null)
@@ -27,17 +27,19 @@ export function DiscoverPanel() {
 
   return (
     <section>
-      <h2>Discover organisations</h2>
+      <h2>{t('disc.heading')}</h2>
       <form onSubmit={search}>
-        <input name="q" placeholder="Name" maxLength={100} />
+        <input name="q" placeholder={t('disc.name')} maxLength={100} />
         <select name="type" defaultValue="">
-          <option value="">Any type</option>
-          {['masjid', 'surau', 'madrasah', 'school', 'ngo', 'other'].map((t) => (
-            <option key={t}>{t}</option>
+          <option value="">{t('disc.anyType')}</option>
+          {ORG_TYPES.map((ty) => (
+            <option key={ty} value={ty}>
+              {t(`orgType.${ty}`)}
+            </option>
           ))}
         </select>
-        <input name="state" placeholder="State" maxLength={100} />
-        <button type="submit">Search</button>
+        <input name="state" placeholder={t('org.state')} maxLength={100} />
+        <button type="submit">{t('disc.search')}</button>
       </form>
       <ul>
         {result.map((o) => (
@@ -45,7 +47,7 @@ export function DiscoverPanel() {
             <button type="button" onClick={() => setSelected(o.id)}>
               {o.name}
             </button>{' '}
-            {o.type} {o.state && `· ${o.state}`}
+            {o.type && t(`orgType.${o.type as (typeof ORG_TYPES)[number]}`)} {o.state && `· ${o.state}`}
           </li>
         ))}
       </ul>
@@ -56,6 +58,7 @@ export function DiscoverPanel() {
 }
 
 function PublicOrgPage({ id }: { id: string }) {
+  const { t, error: message, dateTime } = useT()
   const [org, setOrg] = useState<api.PublicOrganisation | null>(null)
   const [posts, setPosts] = useState<Post[]>([])
   const [events, setEvents] = useState<HubEvent[]>([])
@@ -63,7 +66,7 @@ function PublicOrgPage({ id }: { id: string }) {
   useEffect(() => {
     Promise.all([api.getPublicOrganisation(id), publicPosts(id), publicEvents(id)]).then(
       ([o, p, e]) => (setOrg(o), setPosts(p), setEvents(e)),
-      (e) => setError(e instanceof ApiError && e.code === 'LOGIN_REQUIRED' ? 'Log in to view this organisation.' : message(e)),
+      (e) => setError(message(e)),
     )
   }, [id])
   if (error) return <p role="alert">{error}</p>
@@ -91,18 +94,18 @@ function PublicOrgPage({ id }: { id: string }) {
       </p>
       {org.followable && (
         <button type="button" onClick={toggle}>
-          {org.following ? 'Unfollow' : 'Follow'}
+          {org.following ? t('disc.unfollow') : t('disc.follow')}
         </button>
       )}
-      <h4>Upcoming events</h4>
+      <h4>{t('disc.events')}</h4>
       <ul>
         {events.map((e) => (
           <li key={e.id}>
-            {e.title} — {new Date(e.startsAt).toLocaleString()} {e.location && `@ ${e.location}`}
+            {e.title} — {dateTime(e.startsAt)} {e.location && `@ ${e.location}`}
           </li>
         ))}
       </ul>
-      <h4>Announcements</h4>
+      <h4>{t('hub.announcements')}</h4>
       <ul>
         {posts.map((p) => (
           <li key={p.id}>
@@ -116,6 +119,7 @@ function PublicOrgPage({ id }: { id: string }) {
 
 // ADR-019 §3: following only adds published content to the user's own feed.
 export function FeedPanel() {
+  const { t, dateTime } = useT()
   const [feed, setFeed] = useState<{ posts: FeedItem<Post>[]; events: FeedItem<HubEvent>[] } | null>(null)
   useEffect(() => {
     myFeed().then(setFeed, () => setFeed(null))
@@ -123,11 +127,11 @@ export function FeedPanel() {
   if (!feed || (feed.posts.length === 0 && feed.events.length === 0)) return null
   return (
     <section>
-      <h2>From organisations you follow</h2>
+      <h2>{t('feed.heading')}</h2>
       <ul>
         {feed.events.map((e) => (
           <li key={e.id}>
-            {e.organisation.name}: {e.title} — {new Date(e.startsAt).toLocaleString()}
+            {e.organisation.name}: {e.title} — {dateTime(e.startsAt)}
           </li>
         ))}
         {feed.posts.map((p) => (
@@ -142,9 +146,12 @@ export function FeedPanel() {
 
 // Organisation side: visibility (organisation.update) and logo/cover uploads (ADR-020).
 export function VisibilityPanel({ orgId, visibility, canEdit }: { orgId: string; visibility: api.Visibility; canEdit: boolean }) {
+  const { t, error: message } = useT()
   const [current, setCurrent] = useState(visibility)
   const [status, setStatus] = useState<string | null>(null)
-  if (!canEdit) return <p>Visibility: {current}</p>
+  if (!canEdit) return <p>
+      {t('vis.label')}: {t(`vis.${current}`)}
+    </p>
 
   const change = async (v: api.Visibility) => {
     try {
@@ -155,10 +162,10 @@ export function VisibilityPanel({ orgId, visibility, canEdit }: { orgId: string;
   }
   const upload = async (which: 'logo' | 'cover', file: File | undefined) => {
     if (!file) return
-    if (file.size > api.IMAGE_MAX_BYTES) return setStatus('Images must be 2 MB or smaller')
+    if (file.size > api.IMAGE_MAX_BYTES) return setStatus(t('vis.tooBig'))
     try {
       await api.uploadProfileImage(orgId, which, file)
-      setStatus(`${which} updated`)
+      setStatus(t(which === 'logo' ? 'vis.logoUpdated' : 'vis.coverUpdated'))
     } catch (e) {
       setStatus(message(e))
     }
@@ -166,21 +173,23 @@ export function VisibilityPanel({ orgId, visibility, canEdit }: { orgId: string;
 
   return (
     <div>
-      <h3>Public profile</h3>
+      <h3>{t('vis.heading')}</h3>
       <label>
-        Visibility{' '}
+        {t('vis.label')}{' '}
         <select value={current} onChange={(e) => change(e.target.value as api.Visibility)}>
-          <option value="PUBLIC">Public — anyone can find and view it</option>
-          <option value="UNLISTED">Unlisted — logged-in users with the link</option>
-          <option value="PRIVATE">Private — internal only</option>
+          {(['PUBLIC', 'UNLISTED', 'PRIVATE'] as const).map((v) => (
+            <option key={v} value={v}>
+              {t(`vis.${v}`)}
+            </option>
+          ))}
         </select>
       </label>
-      {current === 'UNLISTED' && <p>Share link: {api.shareLink(location.origin, orgId)}</p>}
+      {current === 'UNLISTED' && <p>{t('vis.shareLink', { url: api.shareLink(location.origin, orgId) })}</p>}
       <label>
-        Logo <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => upload('logo', e.target.files?.[0])} />
+        {t('vis.logo')} <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => upload('logo', e.target.files?.[0])} />
       </label>
       <label>
-        Cover <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => upload('cover', e.target.files?.[0])} />
+        {t('vis.cover')} <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => upload('cover', e.target.files?.[0])} />
       </label>
       {status && <p role="status">{status}</p>}
     </div>

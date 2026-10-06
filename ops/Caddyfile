@@ -1,0 +1,24 @@
+# ADR-026 §1: one domain. API paths go to the API (same list as frontend/vite.config.ts, plus /platform and
+# /health); everything else is the frontend. HTTPS certificates are automatic.
+{$DOMAIN} {
+	encode zstd gzip
+
+	@api path /auth/* /me /me/* /orgs /orgs/* /public/* /islamic/* /platform/* /health
+	handle @api {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
