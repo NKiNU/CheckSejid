@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import express from "express";
 import { errorHandler, notFound } from "./errors.ts";
+import { financeRouter } from "./modules/finance/finance.routes.ts";
 import { hubRouter } from "./modules/hub/hub.routes.ts";
 import { identityRouter } from "./modules/identity/identity.routes.ts";
 import { notificationsRouter } from "./modules/notifications/notifications.routes.ts";
@@ -35,6 +36,7 @@ app.use(subscriptionsRouter);
 app.use(publicRouter);
 app.use(hubRouter);
 app.use(operationsRouter);
+app.use(financeRouter);
 
 app.use(notFound);
 app.use(errorHandler);
