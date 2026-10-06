@@ -13,7 +13,7 @@ import { createTenant, createUser, expectCrossTenantDenied, type TestTenant } fr
 const hasDb = Boolean(process.env.DATABASE_URL);
 if (!hasDb) console.warn("tenancy.db.test: DATABASE_URL not set — DB integration tests SKIPPED");
 
-const noProfile = { type: null, description: null, contactEmail: null, contactPhone: null, addressLine: null, state: null, country: null, links: null };
+const noProfile = { type: null, description: null, contactEmail: null, contactPhone: null, addressLine: null, state: null, country: null, links: null, visibility: "PRIVATE", logoUrl: null, coverUrl: null };
 const as = (t: { token: string }) => ({ Authorization: `Bearer ${t.token}` });
 
 function addMember(owner: TestTenant, email: string) {

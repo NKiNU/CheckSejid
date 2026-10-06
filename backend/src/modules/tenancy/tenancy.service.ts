@@ -1,6 +1,13 @@
-import { Prisma, type Organisation, type OrganisationStatus, type OrganisationType } from "../../../generated/prisma/client.ts";
+import {
+  Prisma,
+  type Organisation,
+  type OrganisationStatus,
+  type OrganisationType,
+  type OrganisationVisibility,
+} from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
+import { publicUrl } from "../../storage.ts";
 import type { RoleKey } from "../rbac/permissions.ts";
 import { audit, platformAudit } from "../rbac/rbac.ts";
 import { TRIAL_DAYS, TRIAL_PLAN } from "../subscriptions/entitlements.ts";
@@ -26,6 +33,9 @@ const orgView = (o: Organisation, userId: string) => ({
   state: o.state,
   country: o.country,
   links: o.links,
+  visibility: o.visibility,
+  logoUrl: publicUrl(o.logoKey),
+  coverUrl: publicUrl(o.coverKey),
 });
 
 // ORG-001: organisation + owner membership in one statement (one transaction).
@@ -158,6 +168,7 @@ export type ProfileChange = {
   state?: string;
   country?: string;
   links?: { label: string; url: string }[] | null;
+  visibility?: OrganisationVisibility;
 };
 
 // ORG-007/008: profile edit; the first one moves DRAFT → ONBOARDING in the same transaction.

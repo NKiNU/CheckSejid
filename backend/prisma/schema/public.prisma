@@ -1,0 +1,13 @@
+// Phase 05 (ADR-019) — following. A follow is a community relationship, not a membership: it grants
+// no management access, roles or permissions (PUB-006). Read and written self-scoped by userId.
+model Follow {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, organisationId])
+  @@index([organisationId])
+}

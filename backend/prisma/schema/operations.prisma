@@ -1,0 +1,70 @@
+// Phase 07 (ADR-024) — operations. Tenant-owned (TENANT-008). Assignees are user ids checked to be
+// members of the same organisation when assigned (TENANT-006); no FK, so history survives a member leaving.
+
+enum ProgrammeStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+model Programme {
+  id             String          @id @default(uuid()) @db.Uuid
+  organisationId String          @db.Uuid
+  organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  title          String
+  objectives     String?
+  startDate      DateTime        @db.Date
+  endDate        DateTime        @db.Date
+  status         ProgrammeStatus @default(PLANNED)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  tasks         Task[]
+  rosterEntries RosterEntry[]
+
+  @@unique([id, organisationId]) // target of tenant-consistent composite FKs
+  @@index([organisationId, startDate])
+}
+
+model Task {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  programmeId    String?      @db.Uuid
+  programme      Programme?   @relation(fields: [programmeId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  title          String
+  description    String?
+  assigneeUserId String?      @db.Uuid
+  dueDate        DateTime?    @db.Date
+  status         TaskStatus   @default(TODO)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organisationId, status])
+  @@index([organisationId, assigneeUserId])
+}
+
+model RosterEntry {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  programmeId    String?      @db.Uuid
+  programme      Programme?   @relation(fields: [programmeId, organisationId], references: [id, organisationId], onDelete: Restrict)
+  userId         String       @db.Uuid
+  duty           String // free text, never an enum (ORG-007, OPS-004)
+  startsAt       DateTime
+  endsAt         DateTime
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organisationId, startsAt])
+}

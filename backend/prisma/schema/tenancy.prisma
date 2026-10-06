@@ -21,6 +21,13 @@ enum OrganisationType {
   other
 }
 
+// Phase 05 (ADR-019): PUBLIC discoverable; UNLISTED link-only for logged-in users; PRIVATE internal only.
+enum OrganisationVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
 model Organisation {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -46,10 +53,30 @@ model Organisation {
   country      String? // ISO 3166-1 alpha-2
   links        Json? // [{ label, url }], http(s) only, validated at the API
 
+  // Phase 05 (ADR-019/020). Default PRIVATE (fail closed). Keys are server-generated public-prefix object keys.
+  visibility OrganisationVisibility @default(PRIVATE)
+  logoKey    String?
+  coverKey   String?
+
   memberships   OrganisationMembership[]
   auditLogs     AuditLog[]
   notifications Notification[]
   subscription  Subscription?
+  follows       Follow[]
+  posts         Post[]
+  events        Event[]
+  programmes    Programme[]
+  tasks         Task[]
+  rosterEntries RosterEntry[]
+  categories    FinancialCategory[]
+  incomes       Income[]
+  expenses      Expense[]
+  budgets       Budget[]
+  collections   Collection[]
+  approvals     FinanceApproval[]
+  attachments   FinanceAttachment[]
+
+  @@index([visibility, status])
 }
 
 // Store membership only (ORG-003). Roles are MembershipRole rows (rbac.prisma).

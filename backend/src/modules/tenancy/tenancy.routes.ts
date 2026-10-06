@@ -31,6 +31,7 @@ const profileBody = z
     state: z.string().trim().min(1).max(100).optional(),
     country: z.string().regex(/^[A-Z]{2}$/).optional(),
     links: nullable(z.array(z.strictObject({ label: z.string().trim().min(1).max(100), url: httpUrl })).max(10)),
+    visibility: z.enum(["PUBLIC", "UNLISTED", "PRIVATE"]).optional(), // ADR-019
   })
   .refine((b) => Object.keys(b).length > 0, "Nothing to change");
 const archiveBody = z.strictObject({ reason: z.string().trim().min(1).max(500).optional() });
