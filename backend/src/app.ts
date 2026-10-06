@@ -5,6 +5,7 @@ import { hubRouter } from "./modules/hub/hub.routes.ts";
 import { identityRouter } from "./modules/identity/identity.routes.ts";
 import { notificationsRouter } from "./modules/notifications/notifications.routes.ts";
 import { publicRouter } from "./modules/public/public.routes.ts";
+import { operationsRouter } from "./modules/operations/operations.routes.ts";
 import { platformRouter } from "./modules/tenancy/platform.routes.ts";
 import { rbacRouter } from "./modules/rbac/rbac.routes.ts";
 import { subscriptionsRouter } from "./modules/subscriptions/subscriptions.routes.ts";
@@ -33,6 +34,7 @@ app.use(notificationsRouter);
 app.use(subscriptionsRouter);
 app.use(publicRouter);
 app.use(hubRouter);
+app.use(operationsRouter);
 
 app.use(notFound);
 app.use(errorHandler);
