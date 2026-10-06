@@ -73,7 +73,9 @@ describe.skipIf(!hasDb)("operations (database)", () => {
 
     const mine = await request(app).get(`${P(t)}/tasks?assigneeUserId=${other.userId}`).set(as(staff)).expect(200);
     expect(mine.body.tasks.map((x: { id: string }) => x.id)).toEqual([task.id]);
-    await request(app).delete(`${P(t)}/tasks/${task.id}`).set(as(t)).expect(204);
+    // ADR-024 §5 (amended): tasks are never deleted, only cancelled, so history is kept.
+    await request(app).delete(`${P(t)}/tasks/${task.id}`).set(as(t)).expect(404);
+    expect(await prisma.task.count({ where: { id: task.id } })).toBe(1);
   });
 
   it("roster: flexible people/time assignments with free-text duty, notified, range queries (OPS-003/004)", async () => {
@@ -95,7 +97,16 @@ describe.skipIf(!hasDb)("operations (database)", () => {
     expect((await patch(t, `roster/${r.id}`, { duty: "Bilal" }).expect(200)).body.entry.duty).toBe("Bilal");
     expect((await patch(t, `roster/${r.id}`, { endsAt: at("2026-10-10T20:00:00Z") })).body.error.code).toBe("VALIDATION_ERROR");
     expect((await patch(t, `roster/${r.id}`, { duty: "x" }, imam)).status).toBe(403);
-    await request(app).delete(`${P(t)}/roster/${r.id}`).set(as(t)).expect(204);
+    // ADR-024 §5 (amended): roster entries are cancelled, never deleted ("who was on duty that night?").
+    await request(app).delete(`${P(t)}/roster/${r.id}`).set(as(t)).expect(404);
+    expect((await request(app).post(`${P(t)}/roster/${r.id}/cancel`).set(as(imam))).status).toBe(403);
+    const cancelled = (await request(app).post(`${P(t)}/roster/${r.id}/cancel`).set(as(t)).expect(200)).body.entry;
+    expect(cancelled).toMatchObject({ id: r.id, duty: "Bilal" });
+    expect(cancelled.cancelledAt).toEqual(expect.any(String));
+    expect((await request(app).post(`${P(t)}/roster/${r.id}/cancel`).set(as(t))).body.error.code).toBe("ROSTER_ENTRY_CANCELLED");
+    expect((await patch(t, `roster/${r.id}`, { duty: "x" })).body.error.code).toBe("ROSTER_ENTRY_CANCELLED");
+    const history = (await request(app).get(`${P(t)}/roster`).set(as(imam)).expect(200)).body.roster;
+    expect(history.map((x: { id: string }) => x.id)).toEqual([r.id]); // still listed, marked cancelled
   });
 
   it("entitlement, lifecycle and permission guards are separate (RBAC-004, ADR-016 §2)", async () => {
@@ -135,9 +146,8 @@ describe.skipIf(!hasDb)("operations (database)", () => {
       { method: "get" as const, path: `${P(o)}/tasks/${vt}`, expectedCode: own ? "TASK_NOT_FOUND" : undefined },
       { method: "patch" as const, path: `${P(o)}/tasks/${vt}`, body: { title: "x" }, expectedCode: own ? "TASK_NOT_FOUND" : undefined },
       { method: "post" as const, path: `${P(o)}/tasks/${vt}/status`, body: { status: "DONE" }, expectedCode: own ? "TASK_NOT_FOUND" : undefined },
-      { method: "delete" as const, path: `${P(o)}/tasks/${vt}`, expectedCode: own ? "TASK_NOT_FOUND" : undefined },
       { method: "patch" as const, path: `${P(o)}/roster/${vr}`, body: { duty: "x" }, expectedCode: own ? "ROSTER_ENTRY_NOT_FOUND" : undefined },
-      { method: "delete" as const, path: `${P(o)}/roster/${vr}`, expectedCode: own ? "ROSTER_ENTRY_NOT_FOUND" : undefined },
+      { method: "post" as const, path: `${P(o)}/roster/${vr}/cancel`, expectedCode: own ? "ROSTER_ENTRY_NOT_FOUND" : undefined },
     ];
     await expectCrossTenantDenied(attacker, [...routes(victim, false), { method: "get", path: `${P(victim)}/tasks` }], { snapshot });
     await expectCrossTenantDenied(attacker, routes(attacker, true), { snapshot });

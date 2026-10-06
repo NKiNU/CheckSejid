@@ -63,6 +63,8 @@ model RosterEntry {
   startsAt       DateTime
   endsAt         DateTime
   notes          String?
+  // ADR-024 §5 (amended 2026-10-06): entries are cancelled, never deleted, so the history stays.
+  cancelledAt    DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

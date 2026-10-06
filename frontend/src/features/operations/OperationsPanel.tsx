@@ -87,6 +87,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
         {roster.map((r) => (
           <li key={r.id}>
             {new Date(r.startsAt).toLocaleString()} – {new Date(r.endsAt).toLocaleTimeString()}: {r.duty} — {name(r.userId)}
+            {r.cancelledAt && ' (cancelled)'}
           </li>
         ))}
       </ul>

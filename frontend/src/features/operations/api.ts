@@ -12,7 +12,7 @@ export type Task = {
   dueDate: string | null
   status: TaskStatus
 }
-export type RosterEntry = { id: string; userId: string; duty: string; startsAt: string; endsAt: string; notes: string | null }
+export type RosterEntry = { id: string; userId: string; duty: string; startsAt: string; endsAt: string; notes: string | null; cancelledAt: string | null }
 
 const base = (orgId: string) => `/orgs/${encodeURIComponent(orgId)}/operations`
 const json = (method: string, data?: unknown): RequestInit => ({ method, body: data === undefined ? undefined : JSON.stringify(data) })

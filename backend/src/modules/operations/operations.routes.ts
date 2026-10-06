@@ -118,10 +118,7 @@ operationsRouter.post(`${P}/tasks/:id/status`, ...write("operations.read"), asyn
   const { status } = z.strictObject({ status: taskStatus }).parse(req.body);
   res.json({ task: await ops.setTaskStatus(actor(req), id, status) });
 });
-operationsRouter.delete(`${P}/tasks/:id`, ...write(), async (req, res) => {
-  await ops.deleteTask(actor(req), idParam(req, ops.taskNotFound));
-  res.status(204).end();
-});
+// ADR-024 §5 (amended): no task delete; cancel with status CANCELLED so the history stays.
 
 operationsRouter.get(`${P}/roster`, ...read, async (req, res) => {
   res.json({ roster: await ops.listRoster(org(req), rosterQuery.parse(req.query)) });
@@ -133,7 +130,6 @@ operationsRouter.patch(`${P}/roster/:id`, ...write(), async (req, res) => {
   const id = idParam(req, ops.rosterNotFound);
   res.json({ entry: await ops.updateRoster(actor(req), id, rosterPatch.parse(req.body)) });
 });
-operationsRouter.delete(`${P}/roster/:id`, ...write(), async (req, res) => {
-  await ops.deleteRoster(actor(req), idParam(req, ops.rosterNotFound));
-  res.status(204).end();
+operationsRouter.post(`${P}/roster/:id/cancel`, ...write(), async (req, res) => {
+  res.json({ entry: await ops.cancelRoster(actor(req), idParam(req, ops.rosterNotFound)) });
 });
