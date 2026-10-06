@@ -43,6 +43,9 @@ Option C.
 
 Lean alternative if the user prefers: ship Option A only in MVP (Malaysia-only, with the zone required), and add calculation later. The provenance and caching rules above apply unchanged.
 
+## Amendment (2026-10-06)
+ADR-023: prayer times follow the visitor's location (zone or browser location, never stored), not the organisation's; the e-Solat terms are confirmed by the product owner. Hijri and Qibla are decided there.
+
 ## Consequence
 - Phase 09 implements a provider interface with two implementations (JAKIM and calculation). This is the one place in the codebase where a second implementation is required on day one.
 - Before Phase 09 starts, someone must confirm the terms of use and stability of the e-Solat endpoint. If use is not permitted, fall back to Option B with a JAKIM-like method and say so in the UI.

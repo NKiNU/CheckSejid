@@ -68,10 +68,10 @@ Rule (not a key): an assignee who holds `operations.read` may change the status 
 | `finance.budget.manage` | Create and update budgets. | BUDGETING |
 | `finance.category.manage` | Create and update financial categories. | DATA_MODEL_SPECIFICATION (FinancialCategory) |
 | `finance.approve` | Approve or reject records in PENDING_APPROVAL, subject to ADR-013. | ROLE_PERMISSION_MATRIX (example key); FINANCIAL_APPROVALS; ADR-013 |
-| `finance.void` | Move a permitted record to VOIDED. Which states may be voided is still OQ-06. | FINANCIAL_STATE_MACHINE |
+| `finance.void` | Cancel (void) a DRAFT or PENDING_APPROVAL record with a reason, and request the void of an APPROVED record; the void request is approved under `finance.approve` (ADR-022). | FINANCIAL_STATE_MACHINE; ADR-022 |
 | `finance.audit.read` | Read the financial audit log. No key grants writing or changing audit history. | ROLE_PERMISSION_MATRIX (example key); FINANCIAL_AUDIT_LOGS |
 
-Phase 08 decides whether the create keys allow editing another member's DRAFT, and whether collections and budgets go through the state machine (OQ-07). Those answers change service rules, not this key list.
+Settled by ADR-022 (2026-10-06): only the creator edits their own DRAFT; budgets go through the state machine (submitted under `finance.budget.manage`, approved under `finance.approve`); collections do not, but income linked to them does. The key list is unchanged.
 
 ### Billing: Masyarakat subscription (2)
 | Key | Allows | Source |
@@ -82,7 +82,7 @@ Phase 08 decides whether the create keys allow editing another member's DRAFT, a
 `billing.*` and `finance.*` never imply each other (SAAS-001).
 
 ### Islamic features and notifications (0)
-No keys. Reading prayer times, Hijri dates and Qibla is not a sensitive action, and the organisation's location context is edited under `organisation.update`. Each user reads and marks only their own notifications. Who receives which notification is OQ-11, not a permission. If a later spec adds a sensitive action here (e.g. a per-organisation prayer-time override), add the key by amending this ADR.
+No keys. Reading prayer times, Hijri dates and Qibla is not a sensitive action, and prayer times follow the visitor's location, so organisations store no prayer-time location (ADR-023). Each user reads and marks only their own notifications. Who receives which notification is OQ-11, not a permission. If a later spec adds a sensitive action here (e.g. a per-organisation prayer-time override), add the key by amending this ADR.
 
 **Tenant total: 23 keys.** Platform keys are in §5.
 
