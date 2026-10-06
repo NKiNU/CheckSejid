@@ -10,8 +10,9 @@ describe('finance api', () => {
   it('converts money with integers only (ADR-011)', () => {
     expect([toMinor('12.34'), toMinor('12.3'), toMinor('12'), toMinor('0.1')]).toEqual([1234, 1230, 1200, 10])
     for (const bad of ['', '-1', '1.234', 'abc', '0', '0.00']) expect(toMinor(bad), bad).toBeNull()
-    expect(formatMoney(123456)).toBe('RM 1,234.56')
-    expect(formatMoney(5, 'USD')).toBe('USD 0.05')
+    expect(formatMoney(123456)).toMatch(/^RM\s?1,234\.56$/)
+    expect(formatMoney(123456, 'MYR', 'ms-MY')).toMatch(/^RM\s?1,234\.56$/)
+    expect(formatMoney(5, 'MYR')).toMatch(/^RM\s?0\.05$/)
   })
 
   it('offers actions matching ADR-022 §2', () => {

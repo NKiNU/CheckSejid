@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { errorMessage } from '../subscriptions/api.ts'
+import { useT } from '../../i18n/index.tsx'
 import * as api from './api.ts'
 
 // Minimal Phase 03 UI: members with roles, role changes, add/remove, leave, ownership transfer.
 // Controls are hidden from members who lack the permission; the server enforces it regardless.
 export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUserId: string; onLeft: () => void }) {
+  const { t, error: errorText } = useT()
   const [perms, setPerms] = useState<Set<string>>(new Set())
   const [members, setMembers] = useState<api.Member[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -14,7 +15,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
     try {
       await fn()
     } catch (e) {
-      setError(errorMessage(e)) // QUOTA_EXCEEDED on add → "upgrade your plan"
+      setError(errorText(e)) // QUOTA_EXCEEDED on add → "upgrade your plan"
     }
   }
 
@@ -26,7 +27,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
   useEffect(() => {
     fetchState(orgId)
       .then(apply)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Something went wrong'))
+      .catch((e) => setError(errorText(e)))
   }, [orgId])
 
   const can = (key: string) => perms.has(key)
@@ -53,27 +54,27 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
 
   return (
     <section>
-      <h3>Members</h3>
+      <h3>{t('members.heading')}</h3>
       <ul>
         {members.map((m) => {
           const editable = can('members.manage') && !m.isOwner && m.userId !== myUserId
           return (
             <li key={m.id}>
               <strong>{m.displayName}</strong>
-              {m.title && ` (${m.title})`} — {m.roles.join(', ') || 'no role'}
+              {m.title && ` (${m.title})`} — {m.roles.map((r) => t(`role.${r}`)).join(', ') || t('members.noRole')}
               {editable && (
                 <>
                   {' '}
                   {api.ASSIGNABLE_ROLES.map((r) => (
                     <label key={r}>
-                      <input type="checkbox" checked={m.roles.includes(r)} onChange={() => toggle(m, r)} /> {r}{' '}
+                      <input type="checkbox" checked={m.roles.includes(r)} onChange={() => toggle(m, r)} /> {t(`role.${r}`)}{' '}
                     </label>
                   ))}
                   <button
                     type="button"
                     onClick={() => run(async () => (await api.removeMember(orgId, m.id), await load()))}
                   >
-                    Remove
+                    {t('members.remove')}
                   </button>
                 </>
               )}
@@ -81,11 +82,11 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
                 <button
                   type="button"
                   onClick={() =>
-                    confirm(`Transfer ownership to ${m.displayName}?`) &&
+                    confirm(t('members.transferConfirm', { name: m.displayName })) &&
                     run(async () => (await api.transferOwnership(orgId, m.id), await load()))
                   }
                 >
-                  Make owner
+                  {t('members.makeOwner')}
                 </button>
               )}
             </li>
@@ -95,17 +96,17 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
       {can('members.manage') && (
         <form onSubmit={add}>
           <label>
-            Add member by email <input name="email" type="email" required maxLength={254} />
+            {t('members.addByEmail')} <input name="email" type="email" required maxLength={254} />
           </label>
-          <button type="submit">Add</button>
+          <button type="submit">{t('members.add')}</button>
         </form>
       )}
       {me && !me.isOwner && (
         <button
           type="button"
-          onClick={() => confirm('Leave this organisation?') && run(async () => (await api.leave(orgId), onLeft()))}
+          onClick={() => confirm(t('members.leaveConfirm')) && run(async () => (await api.leave(orgId), onLeft()))}
         >
-          Leave organisation
+          {t('members.leave')}
         </button>
       )}
       {error && <p role="alert">{error}</p>}

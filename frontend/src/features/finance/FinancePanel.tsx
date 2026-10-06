@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { errorMessage } from '../subscriptions/api.ts'
+import { useT } from '../../i18n/index.tsx'
 import * as api from './api.ts'
 
 // Phase 08: record → submit → approve; cancel / void request; copy to new draft; collections with
 // progress; budgets with used/remaining. The server enforces states, keys, ADR-013 and entitlements.
 export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: Set<string> }) {
+  const { t, locale, error: errorText } = useT()
   const [kind, setKind] = useState<api.Kind>('expense')
   const [records, setRecords] = useState<api.FinanceRecord[]>([])
   const [categories, setCategories] = useState<api.Category[]>([])
@@ -14,12 +15,12 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
   const load = () =>
     Promise.all([api.listRecords(orgId, kind), api.listCategories(orgId), api.listCollections(orgId)]).then(
       ([r, c, col]) => (setRecords(r), setCategories(c), setCollections(col)),
-      (e) => setError(errorMessage(e)),
+      (e) => setError(errorText(e)),
     )
   useEffect(() => {
     Promise.all([api.listRecords(orgId, kind), api.listCategories(orgId), api.listCollections(orgId)]).then(
       ([r, c, col]) => (setRecords(r), setCategories(c), setCollections(col)),
-      (e) => setError(errorMessage(e)),
+      (e) => setError(errorText(e)),
     )
   }, [orgId, kind])
 
@@ -30,13 +31,13 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
       form?.reset()
       await load()
     } catch (e) {
-      setError(errorMessage(e))
+      setError(errorText(e))
     }
   }
   const doAction = (r: api.FinanceRecord, a: api.Action) => {
     let reason: string | undefined
     if (api.needsReason(a)) {
-      reason = prompt('Reason (required)')?.trim()
+      reason = prompt(t('fin.reason'))?.trim()
       if (!reason) return
     }
     run(() => api.act(orgId, kind, r.id, a, reason))
@@ -46,7 +47,7 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
     e.preventDefault()
     const f = new FormData(e.currentTarget)
     const amount = api.toMinor(String(f.get('amount')))
-    if (amount === null) return setError('Enter a positive amount with at most 2 decimals')
+    if (amount === null) return setError(t('fin.badAmount'))
     const s = (k: string) => String(f.get(k) ?? '').trim()
     const common = { amount, categoryId: s('categoryId'), description: s('description') }
     const data =
@@ -63,29 +64,32 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
 
   return (
     <section>
-      <h3>Finance</h3>
-      <p>Records are kept for your organisation's own management; this is not certified accounting (ADR-003).</p>
+      <h3>{t('fin.heading')}</h3>
+      <p>{t('fin.disclaimer')}</p>
       <select value={kind} onChange={(e) => setKind(e.target.value as api.Kind)}>
-        <option value="expense">Expenses</option>
-        <option value="income">Income</option>
-        <option value="budget">Budgets</option>
+        {(['expense', 'income', 'budget'] as const).map((k) => (
+          <option key={k} value={k}>
+            {t(`fin.kind.${k}`)}
+          </option>
+        ))}
       </select>
       <ul>
         {records.map((r) => (
           <li key={r.id}>
-            {r.name ?? r.description} — {api.formatMoney(r.amount, r.currency)} [{r.state}
-            {r.voidRequested ? ', void requested' : ''}]
-            {r.used !== undefined && ` used ${api.formatMoney(r.used, r.currency)}, remaining ${api.formatMoney(r.remaining!, r.currency)}`}
+            {r.name ?? r.description} — {api.formatMoney(r.amount, r.currency, locale)} [{t(`state.${r.state}`)}
+            {r.voidRequested ? `, ${t('fin.voidRequested')}` : ''}]
+            {r.used !== undefined &&
+              ` ${t('fin.usedRemaining', { used: api.formatMoney(r.used, r.currency, locale), remaining: api.formatMoney(r.remaining!, r.currency, locale) })}`}
             {api.availableActions(kind, r, myUserId, perms).map((a) => (
               <button key={a} type="button" onClick={() => doAction(r, a)}>
-                {a}
+                {t(`action.${a}`)}
               </button>
             ))}
             {kind === 'expense' && r.state === 'DRAFT' && r.createdById === myUserId && (
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,application/pdf"
-                aria-label="Attach evidence"
+                aria-label={t('fin.attach')}
                 onChange={(e) => e.target.files?.[0] && run(() => api.uploadEvidence(orgId, r.id, e.target.files![0]!))}
               />
             )}
@@ -94,11 +98,11 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
       </ul>
       {canCreate && (
         <form onSubmit={create}>
-          {kind === 'budget' && <input name="name" placeholder="Budget name" required maxLength={200} />}
-          <input name="amount" placeholder="Amount (RM)" required inputMode="decimal" />
+          {kind === 'budget' && <input name="name" placeholder={t('fin.budgetName')} required maxLength={200} />}
+          <input name="amount" placeholder={t('fin.amount')} required inputMode="decimal" />
           <select name="categoryId" required defaultValue="">
             <option value="" disabled>
-              Category…
+              {t('fin.category')}
             </option>
             {categories
               .filter((c) => c.kind === catKind && c.active)
@@ -116,10 +120,10 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
           ) : (
             <input name="date" type="date" required />
           )}
-          {kind === 'expense' && <input name="payee" placeholder="Payee" maxLength={200} />}
+          {kind === 'expense' && <input name="payee" placeholder={t('fin.payee')} maxLength={200} />}
           {kind === 'income' && (
             <select name="collectionId" defaultValue="">
-              <option value="">No collection</option>
+              <option value="">{t('fin.noCollection')}</option>
               {collections
                 .filter((c) => c.status === 'OPEN')
                 .map((c) => (
@@ -129,8 +133,8 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
                 ))}
             </select>
           )}
-          <input name="description" placeholder="Description" required maxLength={1000} />
-          <button type="submit">Save draft</button>
+          <input name="description" placeholder={t('common.description')} required maxLength={1000} />
+          <button type="submit">{t('common.saveDraft')}</button>
         </form>
       )}
       {perms.has('finance.category.manage') && (
@@ -141,20 +145,22 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
             run(() => api.createCategory(orgId, { name: String(f.get('name')), kind: f.get('kind') as api.Category['kind'] }), e.currentTarget)
           }}
         >
-          <input name="name" placeholder="New category" required maxLength={100} />
+          <input name="name" placeholder={t('fin.newCategory')} required maxLength={100} />
           <select name="kind">
-            <option value="EXPENSE">Expense</option>
-            <option value="INCOME">Income</option>
+            <option value="EXPENSE">{t('cat.EXPENSE')}</option>
+            <option value="INCOME">{t('cat.INCOME')}</option>
           </select>
-          <button type="submit">Add category</button>
+          <button type="submit">{t('fin.addCategory')}</button>
         </form>
       )}
-      <h4>Collections</h4>
+      <h4>{t('fin.collections')}</h4>
       <ul>
         {collections.map((c) => (
           <li key={c.id}>
-            {c.purpose}: {api.formatMoney(c.collected, c.currency)}
-            {c.targetAmount !== null && ` of ${api.formatMoney(c.targetAmount, c.currency)} (${c.percent}%)`} [{c.status}]
+            {c.purpose}: {api.formatMoney(c.collected, c.currency, locale)}
+            {c.targetAmount !== null &&
+              ` ${t('fin.ofTarget', { target: api.formatMoney(c.targetAmount, c.currency, locale), percent: c.percent ?? 0 })}`}{' '}
+            [{t(`state.${c.status}`)}]
           </li>
         ))}
       </ul>
@@ -165,13 +171,13 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
             const f = new FormData(e.currentTarget)
             const target = String(f.get('target') ?? '').trim()
             const targetAmount = target ? api.toMinor(target) : null
-            if (target && targetAmount === null) return setError('Enter a valid target')
+            if (target && targetAmount === null) return setError(t('fin.badTarget'))
             run(() => api.createCollection(orgId, { purpose: String(f.get('purpose')), targetAmount }), e.currentTarget)
           }}
         >
-          <input name="purpose" placeholder="Purpose (e.g. Roof Repair Fund)" required maxLength={200} />
-          <input name="target" placeholder="Target (RM, optional)" inputMode="decimal" />
-          <button type="submit">Add collection</button>
+          <input name="purpose" placeholder={t('fin.purpose')} required maxLength={200} />
+          <input name="target" placeholder={t('fin.target')} inputMode="decimal" />
+          <button type="submit">{t('fin.addCollection')}</button>
         </form>
       )}
       {error && <p role="alert">{error}</p>}

@@ -2,11 +2,13 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { NotificationsPanel } from '../notifications/NotificationsPanel.tsx'
 import { FeedPanel } from '../public/PublicPanels.tsx'
 import { OrganisationsPanel } from '../tenancy/OrganisationsPanel.tsx'
+import { useT } from '../../i18n/index.tsx'
 import * as api from './api.ts'
 
 // Minimal Phase 01 UI: register/login, and an authenticated page whose data comes
 // from the protected GET /me — proof that protection is enforced by the server.
 export function IdentityPage() {
+  const { t } = useT()
   const [user, setUser] = useState<api.User | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -18,13 +20,13 @@ export function IdentityPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <p>Loading…</p>
+  if (loading) return <p>{t('common.loading')}</p>
   if (!user) return <AuthForm onAuthenticated={setUser} />
 
   return (
     <main>
-      <h1>Welcome, {user.displayName}</h1>
-      <p>Signed in as {user.email}.</p>
+      <h1>{t('auth.welcome', { name: user.displayName })}</h1>
+      <p>{t('auth.signedInAs', { email: user.email })}</p>
       <NotificationsPanel />
       <FeedPanel />
       <OrganisationsPanel userId={user.id} />
@@ -35,13 +37,14 @@ export function IdentityPage() {
           setUser(null)
         }}
       >
-        Log out
+        {t('auth.logOut')}
       </button>
     </main>
   )
 }
 
 function AuthForm({ onAuthenticated }: { onAuthenticated: (u: api.User) => void }) {
+  const { t, error: errorText } = useT()
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [error, setError] = useState<string | null>(null)
 
@@ -56,24 +59,24 @@ function AuthForm({ onAuthenticated }: { onAuthenticated: (u: api.User) => void 
       await api.login(email, password)
       onAuthenticated(await api.me())
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      setError(errorText(err))
     }
   }
 
   return (
     <main>
-      <h1>{mode === 'login' ? 'Log in' : 'Create account'}</h1>
+      <h1>{mode === 'login' ? t('auth.logIn') : t('auth.createAccount')}</h1>
       <form onSubmit={submit}>
         {mode === 'register' && (
           <label>
-            Name <input name="displayName" required maxLength={100} autoComplete="name" />
+            {t('auth.name')} <input name="displayName" required maxLength={100} autoComplete="name" />
           </label>
         )}
         <label>
-          Email <input name="email" type="email" required autoComplete="email" />
+          {t('auth.email')} <input name="email" type="email" required autoComplete="email" />
         </label>
         <label>
-          Password{' '}
+          {t('auth.password')}{' '}
           <input
             name="password"
             type="password"
@@ -84,10 +87,10 @@ function AuthForm({ onAuthenticated }: { onAuthenticated: (u: api.User) => void 
           />
         </label>
         {error && <p role="alert">{error}</p>}
-        <button type="submit">{mode === 'login' ? 'Log in' : 'Register'}</button>
+        <button type="submit">{mode === 'login' ? t('auth.logIn') : t('auth.register')}</button>
       </form>
       <button type="button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>
-        {mode === 'login' ? 'Need an account? Register' : 'Have an account? Log in'}
+        {mode === 'login' ? t('auth.needAccount') : t('auth.haveAccount')}
       </button>
     </main>
   )

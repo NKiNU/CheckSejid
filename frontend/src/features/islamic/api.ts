@@ -1,4 +1,4 @@
-import { call } from '../identity/api.ts'
+import { ApiError, call } from '../identity/api.ts'
 
 // ADR-023: times for the visitor's zone or location. The location is sent per request, never stored.
 export type PrayerTimes = {
@@ -24,8 +24,8 @@ export function prayerTimesPath(q: { zone?: string; lat?: number; lng?: number; 
 export const getPrayerTimes = async (q: Parameters<typeof prayerTimesPath>[0]) =>
   (await call<{ prayerTimes: PrayerTimes }>(prayerTimesPath(q))).prayerTimes
 
-export const formatTime = (iso: string, timeZone: string) =>
-  new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
+export const formatTime = (iso: string, timeZone: string, locale = 'en-GB') =>
+  new Intl.DateTimeFormat(locale, { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
 
 // JAKIM zone codes by state (ADR-023: codes only; district names to come from JAKIM's official list).
 export const JAKIM_ZONES: Record<string, string[]> = {
@@ -61,10 +61,10 @@ export function qiblaBearing(lat: number, lng: number) {
 // A promise around the browser geolocation API; rejects honestly when unavailable (ISL-007).
 export function currentPosition(geo: Geolocation | undefined = globalThis.navigator?.geolocation) {
   return new Promise<{ lat: number; lng: number }>((resolve, reject) => {
-    if (!geo) return reject(new Error('Location unavailable on this device'))
+    if (!geo) return reject(new ApiError(0, 'LOCATION_UNAVAILABLE', 'Location unavailable on this device'))
     geo.getCurrentPosition(
       (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => reject(new Error('Location unavailable: permission denied or no signal')),
+      () => reject(new ApiError(0, 'LOCATION_DENIED', 'Location unavailable: permission denied or no signal')),
       { timeout: 10_000, maximumAge: 300_000 },
     )
   })
