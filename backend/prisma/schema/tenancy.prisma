@@ -49,6 +49,7 @@ model Organisation {
   memberships   OrganisationMembership[]
   auditLogs     AuditLog[]
   notifications Notification[]
+  subscription  Subscription?
 }
 
 // Store membership only (ORG-003). Roles are MembershipRole rows (rbac.prisma).

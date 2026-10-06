@@ -51,6 +51,7 @@ model PlatformAuditLog {
   targetUserId         String?  @db.Uuid
   targetOrganisationId String?  @db.Uuid
   reason               String?
+  details              Json? // Phase 11: subscription changes record { from, to, planKey }
   createdAt            DateTime @default(now())
 
   @@index([createdAt])

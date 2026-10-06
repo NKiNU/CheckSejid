@@ -1,0 +1,37 @@
+// Phase 11 (ADR-018) — Masyarakat subscriptions. A separate domain from organisation finance
+// (SAAS-001): nothing here references finance tables and no finance table references these.
+
+// SAAS-009 + ADR-018 (resubscribe EXPIRED/CANCELLED → ACTIVE). Changed only by
+// subscriptions.service transitionSubscription(), the seam a future payment provider calls (SAAS-010).
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+// Global platform configuration, not tenant-owned (SAAS-005). Rows are seeded by migration and
+// edited without code; `entitlements` holds values for the catalogue keys in entitlements.ts,
+// e.g. { "finance": true, "members.max": 25 } (null quota = unlimited).
+model Plan {
+  key          String @id // "free" | "starter" | "professional"
+  name         String
+  entitlements Json
+
+  subscriptions Subscription[]
+}
+
+// SAAS-008: one subscription per organisation, tenant-owned (organisationId, TENANT-008).
+model Subscription {
+  id             String             @id @default(uuid()) @db.Uuid
+  organisationId String             @unique @db.Uuid
+  organisation   Organisation       @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  planKey        String
+  plan           Plan               @relation(fields: [planKey], references: [key], onDelete: Restrict)
+  status         SubscriptionStatus @default(TRIAL)
+  // SAAS-003: set at creation to +30 days. A TRIAL past this instant is effectively EXPIRED (ADR-018 §3).
+  trialEndsAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}

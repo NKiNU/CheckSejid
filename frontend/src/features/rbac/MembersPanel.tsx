@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { errorMessage } from '../subscriptions/api.ts'
 import * as api from './api.ts'
 
 // Minimal Phase 03 UI: members with roles, role changes, add/remove, leave, ownership transfer.
@@ -13,7 +14,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
     try {
       await fn()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong')
+      setError(errorMessage(e)) // QUOTA_EXCEEDED on add → "upgrade your plan"
     }
   }
 

@@ -45,7 +45,8 @@ export async function hasPermission(t: TenantContext, key: Permission, db?: Pris
 // from requireTenant; members without the key get 403 FORBIDDEN (RBAC-003). Re-evaluated on every
 // request, so a role change takes effect on the next request.
 //
-// Entitlements (Phase 11, RBAC-004) are a SEPARATE guard chained after this one, e.g.
+// Entitlements (Phase 11, RBAC-004) are a SEPARATE guard chained after this one
+// (subscriptions/entitlements.ts requireEntitlement), e.g.
 //   router.post(path, requirePermission("finance.expense.create"), requireEntitlement("finance"), h)
 // This function must never look at the plan or subscription.
 export function requirePermission(key: Permission): RequestHandler {
@@ -84,7 +85,14 @@ export function audit(
 // Platform audit record (ADR-015 §5). actorUserId null = out of band (CLI).
 export function platformAudit(
   db: Prisma.TransactionClient,
-  entry: { actorUserId: string | null; action: string; targetUserId?: string; targetOrganisationId?: string; reason?: string },
+  entry: {
+    actorUserId: string | null;
+    action: string;
+    targetUserId?: string;
+    targetOrganisationId?: string;
+    reason?: string;
+    details?: Prisma.InputJsonValue;
+  },
 ) {
   return db.platformAuditLog.create({ data: entry });
 }

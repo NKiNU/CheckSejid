@@ -7,6 +7,7 @@ import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
 import { getMember, memberSelect, memberViews } from "../tenancy/tenancy.service.ts";
 import { notify } from "../notifications/notifications.service.ts";
+import { assertQuota } from "../subscriptions/entitlements.ts";
 import { forTenant } from "../tenancy/tenant.ts";
 import { ASSIGNABLE_ROLES, canGrant, type AssignableRole } from "./permissions.ts";
 import { audit, effectivePermissions, forbidden, membershipRoles, roleNotGrantable, type TenantContext } from "./rbac.ts";
@@ -61,6 +62,9 @@ export async function addMember(actor: Actor, email: string, roles: AssignableRo
       await lockedOrg(tx, organisationId);
       if (!canGrant(await actorPermissions(tx, actor), roles)) throw roleNotGrantable();
       const db = forTenant(organisationId, tx);
+      // ADR-018: members.max counts every membership, owner included. Checked under the org row lock,
+      // so concurrent adds cannot both pass at the limit.
+      await assertQuota(tx, organisationId, "members.max", await db.organisationMembership.count());
       const m = await db.organisationMembership.create({
         data: { userId: user.id } as Prisma.OrganisationMembershipUncheckedCreateInput, // organisationId stamped by forTenant
         select: memberSelect,

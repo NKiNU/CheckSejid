@@ -3,6 +3,7 @@ import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
 import type { RoleKey } from "../rbac/permissions.ts";
 import { audit, platformAudit } from "../rbac/rbac.ts";
+import { TRIAL_DAYS, TRIAL_PLAN } from "../subscriptions/entitlements.ts";
 import { forTenant, orgNotFound } from "./tenant.ts";
 
 // SPEC-GAP: API_STANDARDS requires bounded lists but defines no pagination contract.
@@ -28,10 +29,17 @@ const orgView = (o: Organisation, userId: string) => ({
 });
 
 // ORG-001: organisation + owner membership in one statement (one transaction).
+// SAAS-003 / ADR-018 §2: the 30-day trial subscription is created in the same statement.
 export async function createOrganisation(userId: string, name: string) {
   try {
+    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
     const org = await prisma.organisation.create({
-      data: { name, ownerId: userId, memberships: { create: { userId } } },
+      data: {
+        name,
+        ownerId: userId,
+        memberships: { create: { userId } },
+        subscription: { create: { planKey: TRIAL_PLAN, status: "TRIAL", trialEndsAt } },
+      },
       include: { memberships: { select: { id: true } } },
     });
     return { organisation: orgView(org, userId), membership: { id: org.memberships[0]!.id } };

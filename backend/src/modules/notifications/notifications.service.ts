@@ -3,7 +3,8 @@
 import type { Prisma } from "../../../generated/prisma/client.ts";
 import { forTenant } from "../tenancy/tenant.ts";
 
-// ADR-017 events. member.added is emitted now; the rest by Phases 06, 07, 08 and 11 through notify().
+// ADR-017 events. member.added (10) and subscription.changed (11) are emitted; the rest by Phases 06, 07
+// and 08 through notify().
 export type NotificationType =
   | "member.added"
   | "task.assigned"

@@ -5,6 +5,7 @@ import { identityRouter } from "./modules/identity/identity.routes.ts";
 import { notificationsRouter } from "./modules/notifications/notifications.routes.ts";
 import { platformRouter } from "./modules/tenancy/platform.routes.ts";
 import { rbacRouter } from "./modules/rbac/rbac.routes.ts";
+import { subscriptionsRouter } from "./modules/subscriptions/subscriptions.routes.ts";
 import { tenancyRouter } from "./modules/tenancy/tenancy.routes.ts";
 
 export const app = express();
@@ -27,6 +28,7 @@ app.use(tenancyRouter);
 app.use(rbacRouter);
 app.use(platformRouter);
 app.use(notificationsRouter);
+app.use(subscriptionsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

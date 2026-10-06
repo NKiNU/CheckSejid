@@ -292,7 +292,7 @@ describe.skipIf(!hasDb)("onboarding + lifecycle (database)", () => {
       expect(one.body.nextCursor).toEqual(expect.any(String));
       const drafts = await walk(admin, "status=DRAFT");
       const mine = drafts.find((o) => o.id === t2.organisationId)!;
-      expect(Object.keys(mine).sort()).toEqual(["createdAt", "id", "name", "owner", "status", "type"]);
+      expect(Object.keys(mine).sort()).toEqual(["createdAt", "id", "name", "owner", "status", "subscription", "type"]);
       expect(Object.keys((mine as unknown as { owner: object }).owner).sort()).toEqual(["displayName", "email"]);
       expect(drafts.some((o) => o.id === t1.organisationId)).toBe(false);
       const everyone = await walk(admin, "", 2);

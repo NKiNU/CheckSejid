@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { MembersPanel } from '../rbac/MembersPanel.tsx'
 import { myPermissions } from '../rbac/api.ts'
+import { SubscriptionPanel } from '../subscriptions/SubscriptionPanel.tsx'
 import * as api from './api.ts'
 
 // Minimal Phase 02 UI: list my organisations, switch the current one, create one.
@@ -65,6 +66,7 @@ export function OrganisationsPanel({ userId }: { userId: string }) {
         </p>
       )}
       {current && <LifecyclePanel key={current.id} org={current} onChange={setCurrent} />}
+      {current && <SubscriptionPanel key={current.id} orgId={current.id} />}
       {current && (
         <MembersPanel
           key={current.id}

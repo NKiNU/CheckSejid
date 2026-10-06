@@ -12,6 +12,7 @@ The source of truth is `docs/`. Its rules are loaded below and must be followed.
 - Money: integer minor units + currency — `docs/decisions/ADR-011-MONEY_REPRESENTATION.md`
 - Organisation onboarding/lifecycle rules — `docs/decisions/ADR-016-ORGANISATION_ONBOARDING_LIFECYCLE.md`
 - Notification recipients/content — `docs/decisions/ADR-017-NOTIFICATION_RECIPIENTS.md`
+- Subscriptions, trial and entitlement gate — `docs/decisions/ADR-018-SUBSCRIPTIONS_TRIAL_ENTITLEMENTS.md`
 
 ## Workflow
 Work phases in order from `docs/implementation-roadmap/`. For each phase: read the required docs → map requirement IDs → plan → TDD → security/tenant review → verify acceptance criteria → update `docs/REQUIREMENTS_TRACEABILITY.md`.
