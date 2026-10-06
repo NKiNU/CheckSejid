@@ -26,7 +26,7 @@ Product-owner answer (2026-10-06): images 2 MB, receipts 5 MB, type checked by c
 
 ### 2. Serving
 - Public assets are served from the public prefix (public bucket or CDN base URL from configuration).
-- Private files are downloaded only through a pre-signed GET URL valid for 5 minutes, issued after the permission, entitlement and tenant checks. It is served with `Content-Disposition: attachment`, so it is never rendered as HTML from the application origin.
+- Private files are downloaded only through a pre-signed GET URL valid for 5 minutes, issued after the permission and tenant checks (no entitlement check on reads, ADR-018 §2). It is served with `Content-Disposition: attachment`, so it is never rendered as HTML from the application origin.
 
 ### 3. Amendment to ADR-014: uploads go through the API
 ADR-014 says uploads use pre-signed URLs. A pre-signed PUT cannot enforce a size limit or inspect content, and the product owner required content checks. So uploads are sent to the API as the raw request body (size capped while streaming), checked, then written to S3 by the server. Downloads still use pre-signed URLs as ADR-014 says. All other ADR-014 rules are unchanged.

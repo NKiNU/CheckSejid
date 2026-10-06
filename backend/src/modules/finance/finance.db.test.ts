@@ -285,14 +285,18 @@ describe.skipIf(!hasDb)("finance (database)", () => {
       expect(backwards.body.error.code).toBe("VALIDATION_ERROR");
     });
 
-    it("budgets need finance.reporting; income/expenses need finance (ADR-018, RBAC-004)", async () => {
+    it("writes need the entitlement; reads never do, so lapsed data stays readable (ADR-018 §2, RBAC-004)", async () => {
       const o = await setup();
       await prisma.subscription.update({ where: { organisationId: o.chair.organisationId }, data: { status: "ACTIVE", planKey: "starter" } });
-      const gated = await send(o.chair, o.treasurer, "get", "budgets");
+      const budget = { name: "x", amount: 1, periodStart: "2026-01-01", periodEnd: "2026-12-31", categoryId: o.expense, description: "x" };
+      const gated = await send(o.chair, o.treasurer, "post", "budgets", budget);
       expect([gated.status, gated.body.error.code]).toEqual([403, "ENTITLEMENT_REQUIRED"]);
-      await send(o.chair, o.treasurer, "get", "expenses").expect(200);
+      await send(o.chair, o.treasurer, "get", "budgets").expect(200);
+      await send(o.chair, o.treasurer, "post", "expenses", expenseBody(o)).expect(201);
       await prisma.subscription.update({ where: { organisationId: o.chair.organisationId }, data: { status: "EXPIRED" } });
-      expect((await send(o.chair, o.treasurer, "get", "expenses")).body.error.code).toBe("ENTITLEMENT_REQUIRED");
+      expect((await send(o.chair, o.treasurer, "post", "expenses", expenseBody(o))).body.error.code).toBe("ENTITLEMENT_REQUIRED");
+      expect((await send(o.chair, o.treasurer, "get", "expenses").expect(200)).body.records).toHaveLength(1);
+      await send(o.chair, o.chair, "get", "audit").expect(200);
     });
   });
 

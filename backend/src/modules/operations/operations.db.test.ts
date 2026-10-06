@@ -102,8 +102,9 @@ describe.skipIf(!hasDb)("operations (database)", () => {
     const t = await activeTenant();
     // Free plan (lapsed trial) lacks `operations`.
     await prisma.subscription.update({ where: { organisationId: t.organisationId }, data: { trialEndsAt: new Date(Date.now() - 1000) } });
-    const gated = await request(app).get(`${P(t)}/tasks`).set(as(t));
+    const gated = await request(app).post(`${P(t)}/tasks`).set(as(t)).send({ title: "x" });
     expect([gated.status, gated.body.error.code]).toEqual([403, "ENTITLEMENT_REQUIRED"]);
+    await request(app).get(`${P(t)}/tasks`).set(as(t)).expect(200); // ADR-018 §2: lapsed data stays readable
     await prisma.subscription.update({ where: { organisationId: t.organisationId }, data: { trialEndsAt: new Date(Date.now() + 86_400_000) } });
     await request(app).get(`${P(t)}/tasks`).set(as(t)).expect(200);
 

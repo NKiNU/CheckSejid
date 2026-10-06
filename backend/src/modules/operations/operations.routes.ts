@@ -14,12 +14,12 @@ import * as ops from "./operations.service.ts";
 export const operationsRateLimitStores = { write: new MemoryStore() };
 const writeLimit = limiter(300, operationsRateLimitStores.write, (req: Request) => `user:${req.auth!.userId}`);
 
-// ADR-024 §6: permission, then entitlement (RBAC-004), then lifecycle (ADR-016 §2).
+// ADR-024 §6: permission, then entitlement for writes only (RBAC-004; reads stay open after a lapse,
+// ADR-018 §2), then lifecycle (ADR-016 §2).
 const read: RequestHandler[] = [
   requireAuth,
   requireTenant,
   requirePermission("operations.read"),
-  requireEntitlement("operations"),
   requireOrgStatus("ACTIVE", "SUSPENDED", "ARCHIVED"),
 ];
 const write = (key: Permission = "operations.manage"): RequestHandler[] => [

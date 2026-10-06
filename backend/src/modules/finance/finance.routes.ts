@@ -17,14 +17,14 @@ import * as ref from "./reference.service.ts";
 export const financeRateLimitStores = { write: new MemoryStore() };
 const writeLimit = limiter(300, financeRateLimitStores.write, (req: Request) => `user:${req.auth!.userId}`);
 
-// Permission → entitlement(s) (RBAC-004, ADR-018) → lifecycle (ADR-016 §2: writes ACTIVE; reads also
-// while SUSPENDED/ARCHIVED). Budgets also need finance.reporting (ADR-018 §1).
+// Writes: permission → entitlement(s) (RBAC-004, ADR-018) → ACTIVE. Budgets also need finance.reporting.
+// Reads: permission → lifecycle (ADR-016 §2: also SUSPENDED/ARCHIVED); never entitlement-gated, so an
+// organisation whose plan lapsed can still read its own records (ADR-018 §2).
 const features = (kind?: records.Kind): Feature[] => (kind === "budget" ? ["finance", "finance.reporting"] : ["finance"]);
-const read = (kind?: records.Kind): RequestHandler[] => [
+const read: RequestHandler[] = [
   requireAuth,
   requireTenant,
   requirePermission("finance.read"),
-  ...features(kind).map(requireEntitlement),
   requireOrgStatus("ACTIVE", "SUSPENDED", "ARCHIVED"),
 ];
 const write = (key: Permission, kind?: records.Kind): RequestHandler[] => [
@@ -103,7 +103,7 @@ export const financeRouter = Router();
 const F = "/orgs/:orgId/finance";
 
 // ---- categories ----
-financeRouter.get(`${F}/categories`, ...read(), async (req, res) => {
+financeRouter.get(`${F}/categories`, ...read, async (req, res) => {
   res.json({ categories: await ref.listCategories(org(req)) });
 });
 financeRouter.post(`${F}/categories`, ...write("finance.category.manage"), async (req, res) => {
@@ -123,10 +123,10 @@ const collectionBody = z.strictObject({
   targetAmount: amount.nullable().default(null),
   currency: currency.default("MYR"),
 });
-financeRouter.get(`${F}/collections`, ...read(), async (req, res) => {
+financeRouter.get(`${F}/collections`, ...read, async (req, res) => {
   res.json({ collections: await ref.listCollections(org(req)) });
 });
-financeRouter.get(`${F}/collections/:id`, ...read(), async (req, res) => {
+financeRouter.get(`${F}/collections/:id`, ...read, async (req, res) => {
   res.json({ collection: await ref.getCollection(org(req), param(req, "id", ref.collectionNotFound)) });
 });
 financeRouter.post(`${F}/collections`, ...write("finance.collection.manage"), async (req, res) => {
@@ -147,13 +147,13 @@ for (const kind of records.KINDS) {
   const notFound = () => records.recordNotFound(kind);
   const id = (req: Request) => param(req, "id", notFound);
 
-  financeRouter.get(base, ...read(kind), async (req, res) => {
+  financeRouter.get(base, ...read, async (req, res) => {
     const q = page.extend({ state: z.enum(["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "VOIDED"]).optional() }).parse(req.query);
     const { rows, nextCursor } = await records.list(org(req), kind, q);
     const items = await Promise.all(rows.map(async (r) => ({ ...records.recordView(r), ...(kind === "budget" && (await records.budgetUsage(org(req), r))) })));
     res.json({ records: items, nextCursor });
   });
-  financeRouter.get(`${base}/:id`, ...read(kind), async (req, res) => {
+  financeRouter.get(`${base}/:id`, ...read, async (req, res) => {
     const row = await records.loadRecord(forTenant(org(req)), kind, id(req));
     res.json({ record: await detail(org(req), kind, row) });
   });
@@ -212,7 +212,7 @@ financeRouter.post(
     res.status(201).json({ attachment: await ref.addAttachment(actor(req), expenseId, file) });
   },
 );
-financeRouter.get(`${F}/expenses/:id/attachments/:attachmentId/download`, ...read("expense"), async (req, res) => {
+financeRouter.get(`${F}/expenses/:id/attachments/:attachmentId/download`, ...read, async (req, res) => {
   const expenseId = param(req, "id", () => records.recordNotFound("expense"));
   res.json(await ref.attachmentDownload(org(req), expenseId, param(req, "attachmentId", ref.attachmentNotFound)));
 });
@@ -223,7 +223,6 @@ financeRouter.get(
   requireAuth,
   requireTenant,
   requirePermission("finance.audit.read"),
-  requireEntitlement("finance"),
   requireOrgStatus("ACTIVE", "SUSPENDED", "ARCHIVED"),
   async (req, res) => {
     res.json(await ref.auditLog(org(req), page.extend({ targetId: uuid.optional() }).parse(req.query)));

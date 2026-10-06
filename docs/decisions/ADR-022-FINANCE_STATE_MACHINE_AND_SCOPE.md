@@ -57,7 +57,7 @@ Product-owner answers (2026-10-06), using the example of a treasurer and a chair
 - Submitting a record or requesting a void notifies members with `finance.approval_required` (ADR-017). The title names the record type only, never amounts.
 
 ### 5. Budget "used" (OQ-08)
-For a budget with category C and period [start, end]: used = the sum of APPROVED expenses (a pending void still counts; VOIDED does not) in category C dated within the period, in the budget's currency. Remaining = planned − used. Computed on read and never stored (FIN-008: source transactions are not modified). Budgets and this report require the `finance.reporting` entitlement (ADR-018).
+For a budget with category C and period [start, end]: used = the sum of APPROVED expenses (a pending void still counts; VOIDED does not) in category C dated within the period, in the budget's currency. Remaining = planned − used. Computed on read and never stored (FIN-008: source transactions are not modified). Creating or changing budgets requires the `finance.reporting` entitlement (ADR-018). Finance reads, including budgets and this report, are never entitlement-gated, so data stays readable after a plan lapses (ADR-018 §2).
 
 ### 6. Collection progress (OQ-09)
 A collection has `purpose`, an optional `targetAmount` (minor units), a currency and status OPEN/CLOSED. Progress = the sum of APPROVED income linked to it (same void rule as §5), shown against the target when one is set. Income can be linked only to an OPEN collection of the same organisation and currency. No online payments (ADR-004, SAAS-011).
