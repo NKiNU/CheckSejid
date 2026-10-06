@@ -8,18 +8,20 @@ import S3rver from "s3rver";
 import { resetStorageConfig } from "../storage.ts";
 
 export const TEST_BUCKET = "masyarakat-test";
+export const TEST_PUBLIC_BUCKET = "masyarakat-test-public"; // ADR-025 §1: a separate public Space
 
 export async function startS3() {
   const dir = mkdtempSync(join(tmpdir(), "s3rver-"));
-  const server = new S3rver({ port: 0, address: "127.0.0.1", silent: true, directory: dir, configureBuckets: [{ name: TEST_BUCKET }] });
+  const server = new S3rver({ port: 0, address: "127.0.0.1", silent: true, directory: dir, configureBuckets: [{ name: TEST_BUCKET }, { name: TEST_PUBLIC_BUCKET }] });
   const { port } = (await server.run()) as AddressInfo;
   Object.assign(process.env, {
     S3_ENDPOINT: `http://127.0.0.1:${port}`,
     S3_REGION: "us-east-1",
     S3_BUCKET: TEST_BUCKET,
+    S3_PUBLIC_BUCKET: TEST_PUBLIC_BUCKET,
     S3_ACCESS_KEY_ID: "S3RVER",
     S3_SECRET_ACCESS_KEY: "S3RVER",
-    S3_PUBLIC_BASE_URL: `http://127.0.0.1:${port}/${TEST_BUCKET}`,
+    S3_PUBLIC_BASE_URL: `http://127.0.0.1:${port}/${TEST_PUBLIC_BUCKET}`,
   });
   resetStorageConfig();
   return async () => {

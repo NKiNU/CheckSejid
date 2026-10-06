@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import express from "express";
-import { errorHandler, notFound } from "./errors.ts";
+import { prisma } from "./db.ts";
+import { errorHandler, notFound, safeErrorLog } from "./errors.ts";
 import { financeRouter } from "./modules/finance/finance.routes.ts";
 import { hubRouter } from "./modules/hub/hub.routes.ts";
 import { identityRouter } from "./modules/identity/identity.routes.ts";
@@ -24,8 +25,15 @@ if (trustProxy) app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustPr
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+// ADR-026 §3: the uptime check's target, so a dead database counts as down.
+app.get("/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok" });
+  } catch (e) {
+    console.error(safeErrorLog(e));
+    res.status(503).json({ status: "unavailable" });
+  }
 });
 
 app.use(identityRouter);

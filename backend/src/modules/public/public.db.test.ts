@@ -4,10 +4,11 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { app } from "../../app.ts";
 import { prisma } from "../../db.ts";
-import { getObjectBytes } from "../../storage.ts";
+import { bucketFor, getObjectBytes } from "../../storage.ts";
+import { EICAR, startFakeClamd } from "../../test/clamd.ts";
 import { createTenant, createUser, expectCrossTenantDenied } from "../../test/cross-tenant.ts";
 import { activeTenant, addMember, as, resetStores, setOrgStatus } from "../../test/fixtures.ts";
-import { FILES, startS3 } from "../../test/s3.ts";
+import { FILES, TEST_BUCKET, TEST_PUBLIC_BUCKET, startS3 } from "../../test/s3.ts";
 import { rbacRateLimitStores } from "../rbac/rbac.routes.ts";
 import { tenancyRateLimitStores } from "../tenancy/tenancy.routes.ts";
 import { publicRateLimitStores } from "./public.routes.ts";
@@ -170,12 +171,29 @@ describe.skipIf(!hasDb)("public platform (database)", () => {
     const put = (t: { token: string; organisationId: string }, path: string, body: Buffer, type = "application/octet-stream") =>
       request(app).put(`/orgs/${t.organisationId}/${path}`).set(as(t)).set("Content-Type", type).send(body);
 
+    it("an infected upload is rejected and nothing is stored (ADR-025 §2)", async () => {
+      const clamd = await startFakeClamd();
+      process.env["CLAMD_HOST"] = clamd.host;
+      try {
+        const t = await activeTenant("Scan Org", "PUBLIC");
+        const res = await put(t, "logo", Buffer.concat([FILES.png, EICAR]));
+        expect([res.status, res.body.error.code]).toEqual([422, "UPLOAD_REJECTED"]);
+        expect((await prisma.organisation.findUniqueOrThrow({ where: { id: t.organisationId } })).logoKey).toBeNull();
+        await put(t, "logo", FILES.png).expect(200); // clean files still pass through the scanner
+      } finally {
+        delete process.env["CLAMD_HOST"];
+        await clamd.stop();
+      }
+    });
+
     it("stores a sniffed image under the public prefix, replaces and removes it, audited", async () => {
       const t = await activeTenant("Logo Org", "PUBLIC");
       const first = await put(t, "logo", FILES.png).expect(200);
       expect(first.body.url).toMatch(new RegExp(`/public/org/${t.organisationId}/logo/[0-9a-f-]{36}\\.png$`));
       const row = await prisma.organisation.findUniqueOrThrow({ where: { id: t.organisationId } });
       expect((await getObjectBytes(row.logoKey!)).equals(FILES.png)).toBe(true);
+      // ADR-025 §1: public keys live only in the public Space; everything else only in the private one.
+      expect([bucketFor(row.logoKey!), bucketFor(`org/${t.organisationId}/finance/x.pdf`)]).toEqual([TEST_PUBLIC_BUCKET, TEST_BUCKET]);
       expect((await view(t.organisationId)).body.organisation.logoUrl).toBe(first.body.url);
 
       // The client's Content-Type is ignored: a WebP sent as image/png is stored as .webp.
