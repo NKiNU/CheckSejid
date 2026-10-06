@@ -49,7 +49,9 @@ export const newObjectKey = (prefix: string, type: FileType) => `${prefix}/${ran
 // Every upload passes the malware scan before it is stored (ADR-025 §2).
 export async function putObject(key: string, body: Buffer, contentType: FileType) {
   await scan(body);
-  await config().client.send(new PutObjectCommand({ Bucket: bucketFor(key), Key: key, Body: body, ContentType: contentType }));
+  // Spaces objects are private unless uploaded public-read; only public/ keys (logo, cover) ever are.
+  const acl = key.startsWith("public/") ? ({ ACL: "public-read" } as const) : {};
+  await config().client.send(new PutObjectCommand({ Bucket: bucketFor(key), Key: key, Body: body, ContentType: contentType, ...acl }));
 }
 
 // Best effort: an orphaned object is harmless, a failed request must not fail the user's action.

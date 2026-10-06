@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
 
 jobs:
@@ -35,6 +35,8 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
       - run: npm ci
+      # SEC-008 / ADR-026 §5: block on critical advisories in runtime dependencies; Dependabot handles the rest.
+      - run: npm audit --omit=dev --audit-level=critical
       - run: npm run lint
       - if: matrix.app == 'backend'
         run: npx prisma migrate deploy
