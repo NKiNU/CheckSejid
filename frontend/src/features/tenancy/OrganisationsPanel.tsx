@@ -1,4 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { FinancePanel } from '../finance/FinancePanel.tsx'
+import { HubPanel } from '../hub/HubPanel.tsx'
+import { OperationsPanel } from '../operations/OperationsPanel.tsx'
+import { VisibilityPanel } from '../public/PublicPanels.tsx'
 import { MembersPanel } from '../rbac/MembersPanel.tsx'
 import { myPermissions } from '../rbac/api.ts'
 import { SubscriptionPanel } from '../subscriptions/SubscriptionPanel.tsx'
@@ -67,6 +71,7 @@ export function OrganisationsPanel({ userId }: { userId: string }) {
       )}
       {current && <LifecyclePanel key={current.id} org={current} onChange={setCurrent} />}
       {current && <SubscriptionPanel key={current.id} orgId={current.id} />}
+      {current && <ModulesPanel key={current.id} org={current} userId={userId} />}
       {current && (
         <MembersPanel
           key={current.id}
@@ -179,6 +184,25 @@ function LifecyclePanel({ org, onChange }: { org: api.Organisation; onChange: (o
         </button>
       )}
       {error && <p role="alert">{error}</p>}
+    </div>
+  )
+}
+
+// Phases 05–08: module panels for an ACTIVE organisation (ADR-016 §2), shown by permission key only;
+// the server re-checks permissions, entitlements and lifecycle on every request.
+function ModulesPanel({ org, userId }: { org: api.Organisation; userId: string }) {
+  const [perms, setPerms] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    myPermissions(org.id).then((p) => setPerms(new Set(p.permissions)), () => setPerms(new Set()))
+  }, [org.id])
+  if (!perms) return null
+  const usable = org.status === 'ACTIVE' || org.status === 'SUSPENDED' || org.status === 'ARCHIVED'
+  return (
+    <div>
+      <VisibilityPanel orgId={org.id} visibility={org.visibility} canEdit={perms.has('organisation.update') && org.status !== 'SUSPENDED' && org.status !== 'ARCHIVED'} />
+      {usable && <HubPanel orgId={org.id} perms={perms} />}
+      {usable && perms.has('operations.read') && <OperationsPanel orgId={org.id} myUserId={userId} perms={perms} />}
+      {usable && perms.has('finance.read') && <FinancePanel orgId={org.id} myUserId={userId} perms={perms} />}
     </div>
   )
 }
