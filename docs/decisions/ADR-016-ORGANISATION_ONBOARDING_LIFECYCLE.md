@@ -1,7 +1,7 @@
 # ADR-016-ORGANISATION_ONBOARDING_LIFECYCLE
 
 ## Status
-Accepted (2026-10-05) by the product owner, with the recommended option for all four questions. Closes OQ-13 and OQ-20 (deferred).
+Accepted (2026-10-05) by the product owner, with the recommended option for all four questions. Closes OQ-13 and OQ-20 (deferred). Amended 2026-10-07: invitations deferred to Phase 13 (§4).
 
 ## Context
 - `saas/LIFECYCLE_STATE_MACHINE.md`: "Organisation: DRAFT → ONBOARDING → ACTIVE; ACTIVE → SUSPENDED; SUSPENDED → ACTIVE (reinstate …); ACTIVE/SUSPENDED → ARCHIVED."
@@ -41,6 +41,7 @@ One server-side lifecycle guard, separate from permissions and entitlements:
 ### 4. Membership (OQ-13, OQ-20)
 - OQ-13: a user may be a member (any non-owner role) of several organisations, but may own at most one (`Organisation.ownerId @unique`, already enforced). "Actively manages" in ADR-006 means owning. The existing organisation list is the switcher.
 - OQ-20: the MVP keeps direct add-by-email for existing users. An invitation/consent flow is deferred until notifications exist (Phase 10 or later).
+  - Amended 2026-10-07 by the product owner: invitations stay out of MVP and move to Phase 13 (growth). Direct add remains the MVP flow; it needs `members.manage`, is audited and notified (ADR-017), and the added member may leave at any time (ADR-015 §6 rule 7).
 
 ### Assumptions (small; reverse by amending this ADR)
 - Organisations that already exist when the migration runs (development data only) are backfilled to ACTIVE.

@@ -21,6 +21,7 @@ export const rateLimitStores = {
   loginEmail: new MemoryStore(),
   register: new MemoryStore(),
   session: new MemoryStore(),
+  password: new MemoryStore(),
 };
 export const limiter = (limit: number, store: MemoryStore, keyGenerator?: (req: Request) => string) =>
   rateLimit({
@@ -40,15 +41,18 @@ const loginLimit = limiter(10, rateLimitStores.login);
 const loginEmailLimit = limiter(10, rateLimitStores.loginEmail, (req) => `email:${normaliseEmail(req.body?.email)}`);
 const registerLimit = limiter(5, rateLimitStores.register);
 const sessionLimit = limiter(60, rateLimitStores.session); // refresh + logout
+const passwordLimit = limiter(10, rateLimitStores.password); // guards current-password guessing
 
 const email = z.string().trim().toLowerCase().pipe(z.email().max(254));
 // SPEC-GAP: no password policy specified. Conservative: 12–128 chars (upper bound caps hashing cost).
+const newPassword = z.string().min(12).max(128);
 const registerBody = z.object({
   email,
-  password: z.string().min(12).max(128),
+  password: newPassword,
   displayName: z.string().trim().min(1).max(100),
 });
 const loginBody = z.object({ email, password: z.string().min(1).max(128) });
+const passwordBody = z.strictObject({ currentPassword: z.string().min(1).max(128), newPassword });
 
 function sendSession(res: Response, session: { accessToken: string; refreshToken: string }) {
   res.cookie(REFRESH_COOKIE, session.refreshToken, {
@@ -91,6 +95,12 @@ identityRouter.post(`${SESSION_PATH}/logout`, sessionLimit, async (req, res) => 
   await identity.logout(refreshCookie(req.cookies));
   res.clearCookie(REFRESH_COOKIE, cookieOptions);
   res.status(204).end();
+});
+
+// AUTH-007: the caller gets a new session; every other session is revoked.
+identityRouter.post("/auth/password", passwordLimit, requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = passwordBody.parse(req.body);
+  sendSession(res, await identity.changePassword(req.auth!.userId, currentPassword, newPassword));
 });
 
 identityRouter.get("/me", requireAuth, async (req, res) => {

@@ -98,6 +98,27 @@ export async function logout(token: string | undefined) {
   if (current) await revokeFamily(current.familyId);
 }
 
+// AUTH-007 (ADR-009): revokes every refresh token of the user, then starts a fresh session
+// for the caller. Access tokens already issued stay valid until they expire (~15 min).
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  const passwordHash = await argon2.hash(newPassword, { type: argon2.argon2id }); // hashed outside the locks
+  const refreshToken = await prisma.$transaction(async (tx) => {
+    // The user row lock serialises concurrent changes, so each verifies the hash it replaces.
+    // NO KEY UPDATE: a plain FOR UPDATE would deadlock with a rotation inserting a token (FK key-share lock).
+    const [user] = await tx.$queryRaw<{ passwordHash: string }[]>`
+      SELECT "passwordHash" FROM "User" WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
+    if (!user) throw unauthenticated();
+    if (!(await argon2.verify(user.passwordHash, currentPassword))) throw invalidCredentials();
+    // Same pattern as lockFamily, for all families: waits for in-flight rotations, and the
+    // UPDATE below (a new snapshot) also revokes the tokens they issued.
+    await tx.$queryRaw`SELECT id FROM "RefreshToken" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
+    await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+    await tx.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+    return issueRefreshToken(userId, randomUUID(), new Date(Date.now() + REFRESH_TOKEN_TTL_MS), tx);
+  });
+  return { accessToken: await signAccessToken(userId), refreshToken };
+}
+
 export async function getUser(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: publicUser });
   if (!user) throw unauthenticated();

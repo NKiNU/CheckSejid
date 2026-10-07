@@ -236,4 +236,80 @@ describe.skipIf(!hasDb)("identity (database)", () => {
       expect((await request(app).post("/auth/session/logout")).status).toBe(204);
     });
   });
+
+  // AUTH-007: password change revokes refresh tokens (ADR-009).
+  describe("password change", () => {
+    const newPassword = "a brand new passphrase";
+    const change = (accessToken: string, body: object) =>
+      request(app).post("/auth/password").set("Authorization", `Bearer ${accessToken}`).send(body);
+
+    it("changes the password, revokes every session and starts a new one for the caller", async () => {
+      const { email, accessToken, refresh: t1 } = await registerAndLogin();
+      const other = await request(app).post("/auth/login").send({ email, password }).expect(200);
+      const t2 = refreshCookie(other)!;
+
+      const res = await change(accessToken, { currentPassword: password, newPassword });
+      expect(res.status).toBe(200);
+      expect(res.body.accessToken).toEqual(expect.any(String));
+      const t3 = refreshCookie(res)!;
+
+      expect((await refresh(t1)).status).toBe(401);
+      expect((await refresh(t2)).status).toBe(401);
+      expect((await refresh(t3)).status).toBe(200);
+      expect((await request(app).post("/auth/login").send({ email, password })).status).toBe(401);
+      expect((await request(app).post("/auth/login").send({ email, password: newPassword })).status).toBe(200);
+      const user = await prisma.user.findUniqueOrThrow({ where: { email: email.toLowerCase() } });
+      expect(user.passwordHash).toMatch(/^\$argon2id\$/);
+    });
+
+    it("rejects a wrong current password and changes nothing", async () => {
+      const { email, accessToken, refresh: t1 } = await registerAndLogin();
+      const res = await change(accessToken, { currentPassword: "not my password!", newPassword });
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe("INVALID_CREDENTIALS");
+      expect((await refresh(t1)).status).toBe(200);
+      expect((await request(app).post("/auth/login").send({ email, password })).status).toBe(200);
+    });
+
+    it("requires authentication", async () => {
+      const res = await request(app).post("/auth/password").send({ currentPassword: password, newPassword });
+      expect(res.status).toBe(401);
+    });
+
+    it("validates the new password server-side", async () => {
+      const { accessToken } = await registerAndLogin();
+      expect((await change(accessToken, { currentPassword: password, newPassword: "short" })).status).toBe(400);
+      expect((await change(accessToken, { currentPassword: password, newPassword: "x".repeat(129) })).status).toBe(400);
+      expect((await change(accessToken, { newPassword })).status).toBe(400);
+      expect((await change(accessToken, { currentPassword: password, newPassword, extra: 1 })).status).toBe(400);
+    });
+
+    // Same race as logout: a rotation in flight must not leave a live token behind. Real PostgreSQL only.
+    it("revokes a token issued by a rotation that was in flight when the change started", async (ctx) => {
+      const [{ version }] = await prisma.$queryRaw<{ version: string }[]>`SELECT version()`;
+      if (version.includes("wasm32")) {
+        console.warn("SKIPPED: password/rotation race test needs real PostgreSQL (PGlite detected)");
+        ctx.skip();
+      }
+      const { email, accessToken, refresh: t1 } = await registerAndLogin();
+      const a = await prisma.refreshToken.findUniqueOrThrow({ where: { tokenHash: hashRefreshToken(t1) } });
+      const user = await prisma.user.findUniqueOrThrow({ where: { email: email.toLowerCase() } });
+      const t2 = newRefreshToken();
+      let changeDone: Promise<unknown> | undefined;
+
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "RefreshToken" WHERE "familyId" = ${a.familyId}::uuid FOR UPDATE`;
+        changeDone = change(accessToken, { currentPassword: password, newPassword }).then((r) => expect(r.status).toBe(200));
+        await new Promise((r) => setTimeout(r, 500)); // argon2 hashing + reaching the lock
+        await tx.refreshToken.update({ where: { id: a.id }, data: { rotatedAt: new Date() } });
+        await tx.refreshToken.create({
+          data: { userId: user.id, familyId: a.familyId, tokenHash: hashRefreshToken(t2), expiresAt: a.expiresAt },
+        });
+      });
+      await changeDone;
+
+      const b = await prisma.refreshToken.findUniqueOrThrow({ where: { tokenHash: hashRefreshToken(t2) } });
+      expect(b.revokedAt).not.toBeNull();
+    });
+  });
 });
