@@ -74,7 +74,7 @@
 
 @layer base {
   html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
-  body { @apply bg-background text-foreground antialiased; overscroll-behavior: none; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  body { @apply bg-background text-foreground antialiased; overflow-wrap: anywhere; overscroll-behavior: none; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
   input, textarea, select { font-size: 16px; }
   button, a, [role='button'] { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
   button:not(:disabled), [role='button'] { transition: transform 160ms var(--ease-out); }
