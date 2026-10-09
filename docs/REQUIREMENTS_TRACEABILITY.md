@@ -174,7 +174,7 @@ Rules:
 
 | ID | Requirement | Source | Phase | Tests |
 |---|---|---|---|---|
-| LOC-001 | The MVP UI supports Bahasa Melayu and English. | architecture/LOCALISATION_AND_TIMEZONE.md; ADR-027 | 12 | `frontend/src/i18n/i18n.test.ts` › ms/en key and placeholder parity, interpolation, language detection, error-code messages; all screens use `useT()` |
+| LOC-001 | The MVP UI supports Bahasa Melayu and English. | architecture/LOCALISATION_AND_TIMEZONE.md; ADR-027 | 12 | `frontend/src/i18n/i18n.test.ts` › ms/en key and placeholder parity, interpolation, language detection, error-code messages; all screens use `useT()`; UI shell and nav strings in `src/app/` (ADR-028) |
 | LOC-002 | The default context is Asia/Kuala_Lumpur timezone and MYR currency. | architecture/LOCALISATION_AND_TIMEZONE.md; finance/MONEY_AND_AMOUNT_RULES.md | 02, 08 | 08: currency defaults to MYR; 09: JAKIM times rendered in Asia/Kuala_Lumpur |
 | LOC-003 | Timestamps are stored consistently (UTC) and rendered in context. | architecture/LOCALISATION_AND_TIMEZONE.md | All | 06–09: event/roster instants stored UTC; DATE fields as YYYY-MM-DD (`dates.ts`) |
 
