@@ -22,10 +22,7 @@ export function Shell({ tabs, title, context }: { tabs: Tab[]; title: ReactNode;
           type="button"
           aria-label={t('auth.logOut')}
           className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
-          onClick={async () => {
-            await signOut()
-            navigate('/')
-          }}
+          onClick={() => void signOut().finally(() => navigate('/'))}
         >
           <LogOut className="size-5" aria-hidden />
         </button>

@@ -12,9 +12,9 @@ export function Nav({ tabs }: { tabs: Tab[] }) {
       className="fixed inset-x-0 bottom-0 z-20 grid bg-card/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_8px_rgb(0_0_0/0.06)] backdrop-blur lg:static lg:flex lg:flex-1 lg:flex-col lg:gap-1 lg:bg-transparent lg:p-3 lg:pb-3 lg:shadow-none"
       style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
     >
-      {tabs.map(({ to, label, icon: Icon, end }) => {
+      {tabs.map(({ to, label, icon: Icon, end, also }) => {
         const [path, frag] = to.split('#')
-        const onPath = end ? pathname === path : pathname === path || pathname.startsWith(path + '/')
+        const onPath = end ? pathname === path : [path, ...(also ?? [])].some((p) => pathname === p || pathname.startsWith(p + '/'))
         // The hash tab (#prayer) is active only on its hash; other tabs on that path are not.
         const active = onPath && (frag ? hash === '#' + frag : hash !== '#prayer')
         return (

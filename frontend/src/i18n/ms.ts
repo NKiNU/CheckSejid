@@ -36,7 +36,6 @@ export const ms: Record<Key, string> = {
   'auth.haveAccount': 'Sudah ada akaun? Log masuk',
   'auth.logOut': 'Log keluar',
   'auth.welcome': 'Selamat datang, {name}',
-  'auth.signedInAs': 'Log masuk sebagai {email}.',
 
   'notif.heading': 'Notifikasi', // REVIEW: "Notifikasi" vs "Pemberitahuan"
   'notif.unread': '{count} belum dibaca',
@@ -48,9 +47,7 @@ export const ms: Record<Key, string> = {
   'sub.summary': 'Pelan {plan} — {status}',
   'sub.trialLeft': '{days} hari lagi dalam tempoh percubaan',
 
-  'org.heading': 'Organisasi',
   'org.current': 'Organisasi semasa',
-  'org.managing': 'Mengurus',
   'org.owner': 'pemilik', // REVIEW: "pemilik" vs "pemegang amanah" for masjid context
   'org.newName': 'Nama organisasi baharu',
   'org.create': 'Cipta organisasi',

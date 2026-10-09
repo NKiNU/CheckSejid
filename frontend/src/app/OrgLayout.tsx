@@ -65,5 +65,5 @@ export function OrgLayout() {
   const { org, perms } = state
   const usable = org.status === 'ACTIVE' || org.status === 'SUSPENDED' || org.status === 'ARCHIVED'
   const ctx: OrgCtx = { org, perms, usable, setOrg: (o) => setState({ id: orgId, org: o, perms }) }
-  return <Shell tabs={orgTabs(org.id, perms)} title={<OrgSwitcher current={org} />} context={ctx} />
+  return <Shell tabs={orgTabs(org.id, perms, usable)} title={<OrgSwitcher current={org} />} context={ctx} />
 }

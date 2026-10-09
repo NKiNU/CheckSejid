@@ -34,7 +34,6 @@ export const en = {
   'auth.haveAccount': 'Have an account? Log in',
   'auth.logOut': 'Log out',
   'auth.welcome': 'Welcome, {name}',
-  'auth.signedInAs': 'Signed in as {email}.',
 
   'notif.heading': 'Notifications',
   'notif.unread': '{count} unread',
@@ -46,9 +45,7 @@ export const en = {
   'sub.summary': '{plan} plan — {status}',
   'sub.trialLeft': '{days} days left in trial',
 
-  'org.heading': 'Organisations',
   'org.current': 'Current organisation',
-  'org.managing': 'Managing',
   'org.owner': 'owner',
   'org.newName': 'New organisation name',
   'org.create': 'Create organisation',

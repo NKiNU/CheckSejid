@@ -89,7 +89,7 @@ export function LanguageSwitch() {
   return (
     <div role="group" aria-label={t('lang.switch')}>
       {(['ms', 'en'] as const).map((l) => (
-        <button key={l} type="button" lang={l} aria-pressed={lang === l} onClick={() => setLang(l)}>
+        <button key={l} type="button" className="min-h-11 min-w-11 rounded-md px-2 text-sm aria-pressed:bg-primary/10 aria-pressed:font-semibold aria-pressed:text-primary" lang={l} aria-pressed={lang === l} onClick={() => setLang(l)}>
           {l === 'ms' ? 'BM' : 'EN'}
         </button>
       ))}
