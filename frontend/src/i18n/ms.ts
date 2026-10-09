@@ -4,6 +4,9 @@ import type { Key } from './en.ts'
 export const ms: Record<Key, string> = {
   'lang.switch': 'Bahasa',
   'common.loading': 'Memuatkan…',
+  'app.name': 'Masyarakat',
+  'common.notFound': 'Halaman tidak dijumpai',
+  'common.back': 'Kembali',
   'common.choose': 'Pilih…',
   'common.description': 'Keterangan',
   'common.saveDraft': 'Simpan draf',

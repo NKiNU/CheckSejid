@@ -2,6 +2,9 @@
 export const en = {
   'lang.switch': 'Language',
   'common.loading': 'Loading…',
+  'app.name': 'Masyarakat',
+  'common.notFound': 'Page not found',
+  'common.back': 'Back',
   'common.choose': 'Choose…',
   'common.description': 'Description',
   'common.saveDraft': 'Save draft',
