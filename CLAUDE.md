@@ -23,6 +23,7 @@ The source of truth is `docs/`. Its rules are loaded below and must be followed.
 - Production storage and upload scanning (two Spaces, ClamAV) — `docs/decisions/ADR-025-STORAGE_SERVING_AND_MALWARE_SCANNING.md`
 - Production operations (DigitalOcean Droplet, backups, monitoring, deploy) — `docs/decisions/ADR-026-PRODUCTION_OPERATIONS.md`; runbook `docs/operations/RUNBOOK.md`
 - Bahasa Melayu / English UI — `docs/decisions/ADR-027-LOCALISATION_BM_EN.md`
+- Frontend UI foundation (Tailwind + shadcn/ui + react-router, mobile-first, look) — `docs/decisions/ADR-028-FRONTEND_UI_FOUNDATION.md`
 
 ## Workflow
 Work phases in order from `docs/implementation-roadmap/`. For each phase: read the required docs → map requirement IDs → plan → TDD → security/tenant review → verify acceptance criteria → update `docs/REQUIREMENTS_TRACEABILITY.md`.
