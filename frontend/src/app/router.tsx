@@ -13,7 +13,7 @@ export function RequireAuth() {
   const { status } = useSession()
   const { pathname, search } = useLocation()
   const { t } = useT()
-  if (status === 'loading') return <p className="grid min-h-dvh place-items-center">{t('common.loading')}</p>
+  if (status === 'loading') return <p className="py-12 text-center">{t('common.loading')}</p>
   if (status === 'out') return <Navigate to={'/login?next=' + encodeURIComponent(pathname + search)} replace />
   return <Outlet />
 }
@@ -24,7 +24,7 @@ function CommunityShell() {
   return <Shell tabs={communityTabs(status === 'in')} title={t('app.name')} />
 }
 
-// Task 4 nest authenticated routes under <RequireAuth />.
+// Task 4 nestsauthenticated routes under <RequireAuth />.
 export const router = createBrowserRouter([
   { path: '/login', element: <AuthPage mode="login" /> },
   { path: '/register', element: <AuthPage mode="register" /> },

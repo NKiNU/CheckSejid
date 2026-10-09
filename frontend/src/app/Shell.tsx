@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router'
+import { useEffect, type ReactNode } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import { LogOut } from 'lucide-react'
 import { LanguageSwitch, useT } from '@/i18n/index.tsx'
 import { Nav } from './Nav.tsx'
@@ -10,6 +10,10 @@ export function Shell({ tabs, title }: { tabs: Tab[]; title: ReactNode }) {
   const { t } = useT()
   const { status, signOut } = useSession()
   const navigate = useNavigate()
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView() // instant, so reduced motion is respected
+  }, [hash])
   const actions = (
     <>
       <LanguageSwitch />
@@ -36,12 +40,12 @@ export function Shell({ tabs, title }: { tabs: Tab[]; title: ReactNode }) {
         <div className="min-w-0 flex-1 truncate font-semibold">{title}</div>
         {actions}
       </header>
-      <Nav tabs={tabs} />
-      <main className="legacy mx-auto w-full max-w-3xl px-4 pb-24 lg:pb-8">
-        <div className="hidden items-center gap-2 py-3 lg:flex">
-          <div className="min-w-0 flex-1 truncate font-semibold">{title}</div>
-          {actions}
-        </div>
+      <aside className="lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-60 lg:flex-none lg:flex-col lg:border-r lg:border-border">
+        <div className="hidden truncate p-4 font-semibold lg:block">{title}</div>
+        <Nav tabs={tabs} />
+        <div className="hidden items-center gap-2 p-3 lg:flex">{actions}</div>
+      </aside>
+      <main className="legacy mx-auto w-full min-w-0 max-w-3xl px-4 pb-24 lg:pb-8">
         <Outlet />
       </main>
     </div>
