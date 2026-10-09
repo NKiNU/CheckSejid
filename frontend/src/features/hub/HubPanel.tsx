@@ -4,7 +4,7 @@ import * as api from './api.ts'
 
 // Phase 06: bulletin posts and events with their lifecycle. Controls follow the caller's keys; the
 // server enforces them (AUTH-003).
-export function HubPanel({ orgId, perms }: { orgId: string; perms: Set<string> }) {
+export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<string> }) {
   const { t, error: errorText } = useT()
   const [posts, setPosts] = useState<api.Post[]>([])
   const [events, setEvents] = useState<api.HubEvent[]>([])

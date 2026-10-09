@@ -54,7 +54,7 @@ export const uploadEvidence = (orgId: string, expenseId: string, file: Blob) =>
 
 // ADR-022 §2: which actions to offer. Buttons only; the server enforces state, keys, creator and ADR-013.
 const CREATE_KEY: Record<Kind, string> = { income: 'finance.income.create', expense: 'finance.expense.create', budget: 'finance.budget.manage' }
-export function availableActions(kind: Kind, r: FinanceRecord, myUserId: string, perms: Set<string>): Action[] {
+export function availableActions(kind: Kind, r: FinanceRecord, myUserId: string, perms: ReadonlySet<string>): Action[] {
   const creator = r.createdById === myUserId && perms.has(CREATE_KEY[kind])
   const out: Action[] = []
   if (r.state === 'DRAFT' && creator) out.push('submit')

@@ -4,7 +4,7 @@ import { listMembers, type Member } from '../rbac/api.ts'
 import * as api from './api.ts'
 
 // Phase 07: tasks (assign, status) and roster. Plan limits show an upgrade message (ADR-018).
-export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: Set<string> }) {
+export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: ReadonlySet<string> }) {
   const { t, error: errorText, dateTime, time, date } = useT()
   const [tasks, setTasks] = useState<api.Task[]>([])
   const [roster, setRoster] = useState<api.RosterEntry[]>([])

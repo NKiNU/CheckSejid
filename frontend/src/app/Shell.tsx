@@ -6,7 +6,7 @@ import { Nav } from './Nav.tsx'
 import { useSession } from './session.tsx'
 import type { Tab } from './tabs.ts'
 
-export function Shell({ tabs, title }: { tabs: Tab[]; title: ReactNode }) {
+export function Shell({ tabs, title, context }: { tabs: Tab[]; title: ReactNode; context?: unknown }) {
   const { t } = useT()
   const { status, signOut } = useSession()
   const navigate = useNavigate()
@@ -40,13 +40,13 @@ export function Shell({ tabs, title }: { tabs: Tab[]; title: ReactNode }) {
         <div className="min-w-0 flex-1 truncate font-semibold">{title}</div>
         {actions}
       </header>
-      <aside className="lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-60 lg:flex-none lg:flex-col lg:border-r lg:border-border">
+      <aside className="lg:overflow-y-auto lg:sticky lg:top-0 lg:flex lg:h-dvh lg:w-60 lg:flex-none lg:flex-col lg:border-r lg:border-border">
         <div className="hidden truncate p-4 font-semibold lg:block">{title}</div>
         <Nav tabs={tabs} />
         <div className="hidden items-center gap-2 p-3 lg:flex">{actions}</div>
       </aside>
       <main className="legacy mx-auto w-full min-w-0 max-w-3xl px-4 pb-24 lg:pb-8">
-        <Outlet />
+        <Outlet context={context} />
       </main>
     </div>
   )

@@ -5,6 +5,8 @@ import { IslamicPanel } from '@/features/islamic/IslamicPanel.tsx'
 import { NotificationsPanel } from '@/features/notifications/NotificationsPanel.tsx'
 import { AuthPage } from './AuthPage.tsx'
 import { NotFound } from './NotFound.tsx'
+import { OrgLayout } from './OrgLayout.tsx'
+import { MyOrganisations, OrgFinance, OrgHome, OrgHub, OrgMembers, OrgMore, OrgOperations, OrgSettings } from './OrgPages.tsx'
 import { Shell } from './Shell.tsx'
 import { useSession } from './session.tsx'
 import { communityTabs } from './tabs.ts'
@@ -24,10 +26,28 @@ function CommunityShell() {
   return <Shell tabs={communityTabs(status === 'in')} title={t('app.name')} />
 }
 
-// Task 4 nestsauthenticated routes under <RequireAuth />.
 export const router = createBrowserRouter([
   { path: '/login', element: <AuthPage mode="login" /> },
   { path: '/register', element: <AuthPage mode="register" /> },
+  {
+    element: <RequireAuth />,
+    children: [
+      {
+        path: '/org/:orgId',
+        element: <OrgLayout />,
+        children: [
+          { index: true, element: <OrgHome /> },
+          { path: 'hub', element: <OrgHub /> },
+          { path: 'finance', element: <OrgFinance /> },
+          { path: 'operations', element: <OrgOperations /> },
+          { path: 'members', element: <OrgMembers /> },
+          { path: 'settings', element: <OrgSettings /> },
+          { path: 'more', element: <OrgMore /> },
+          { path: '*', element: <NotFound /> },
+        ],
+      },
+    ],
+  },
   {
     element: <CommunityShell />,
     children: [
@@ -43,7 +63,7 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { path: '/feed', element: <FeedPanel /> },
+          { path: '/feed', element: <><MyOrganisations /><FeedPanel /></> },
           { path: '/notifications', element: <NotificationsPanel /> },
         ],
       },

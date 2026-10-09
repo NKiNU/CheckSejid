@@ -4,7 +4,7 @@ import * as api from './api.ts'
 
 // Phase 08: record → submit → approve; cancel / void request; copy to new draft; collections with
 // progress; budgets with used/remaining. The server enforces states, keys, ADR-013 and entitlements.
-export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: Set<string> }) {
+export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: ReadonlySet<string> }) {
   const { t, locale, error: errorText } = useT()
   const [kind, setKind] = useState<api.Kind>('expense')
   const [records, setRecords] = useState<api.FinanceRecord[]>([])

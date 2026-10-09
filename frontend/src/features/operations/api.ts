@@ -27,5 +27,5 @@ export const createRosterEntry = async (orgId: string, data: { userId: string; d
   (await call<{ entry: RosterEntry }>(`${base(orgId)}/roster`, json('POST', data))).entry
 
 // The assignee or a manager may change status (ADR-015 rule); used only to show controls.
-export const canChangeStatus = (task: Task, myUserId: string, perms: Set<string>) =>
+export const canChangeStatus = (task: Task, myUserId: string, perms: ReadonlySet<string>) =>
   perms.has('operations.manage') || task.assigneeUserId === myUserId
