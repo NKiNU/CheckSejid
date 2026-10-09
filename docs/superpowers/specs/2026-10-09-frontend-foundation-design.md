@@ -45,7 +45,7 @@ Added via the shadcn CLI into `src/components/ui/`: `button`, `input`, `label`, 
 Session bootstrap moves from `IdentityPage` to the shell: `api.refresh()` then `api.me()` once on load; the user is held in a small React context. Login/register keep current behaviour (register → login → `me`, 12-char minimum on register, server error shown via `useT().error`). All strings go through `useT()` with ms/en parity.
 
 ## Testing
-- Vitest: auth form shows the server's error message; `Nav` hides Finance/Ops tabs without `finance.read`/`operations.read`. Existing i18n parity test keeps passing.
+- Vitest (pure functions, no DOM test libraries): tab lists hide Finance/Ops without `finance.read`/`operations.read`; the post-login `next` redirect only accepts same-origin paths. Existing i18n parity test keeps passing. The auth form's error display is checked in the Playwright run.
 - `npm run build` and `npm run lint` clean.
 - Playwright at 390×844 and 1280×800: login, open each route, screenshots in light and dark.
 - Real phone checklist for the product owner: safe areas, tap feel, no input zoom, tab bar above the home indicator, status bar colour.
