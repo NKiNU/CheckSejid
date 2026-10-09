@@ -18,7 +18,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const [submitting, setSubmitting] = useState(false)
   const register = mode === 'register'
 
-  if (status === 'in') return <Navigate to="/feed" replace />
+  if (status === 'in' && !submitting) return <Navigate to="/feed" replace />
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
