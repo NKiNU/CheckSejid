@@ -22,4 +22,6 @@ function Badge({ className, variant, ...props }: React.ComponentProps<"span"> & 
   return <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />
 }
 
+export type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>['variant']>
+
 export { Badge }

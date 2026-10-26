@@ -1,7 +1,8 @@
 import { TIME_ZONE } from '../../i18n/index.tsx'
 import type { TaskStatus } from './api.ts'
+import type { BadgeVariant } from '@/components/ui/badge.tsx'
 
-export const taskStatusVariant = (s: TaskStatus): 'success' | 'warning' | 'neutral' =>
+export const taskStatusVariant = (s: TaskStatus): BadgeVariant =>
   s === 'DONE' ? 'success' : s === 'IN_PROGRESS' ? 'warning' : 'neutral'
 
 const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE }) // en-CA gives YYYY-MM-DD

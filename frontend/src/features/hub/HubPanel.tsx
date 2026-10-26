@@ -152,7 +152,7 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
         title={dialog === 'event' ? t('hub.newEvent') : t('hub.newPost')}
         submitLabel={t('common.saveDraft')}
         onSubmit={dialog === 'event' ? addEvent : addPost}
-        error={error}
+        error={open ? error : null}
       >
         {dialog === 'event' ? (
           <>

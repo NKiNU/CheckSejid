@@ -1,5 +1,5 @@
 import type { Subscription } from './api.ts'
-import type { BadgeVariant } from '../tenancy/orgStatus.ts'
+import type { BadgeVariant } from '@/components/ui/badge.tsx'
 
 // ADR-018: ACTIVE is paid and in good standing; TRIAL is working but temporary; PAST_DUE keeps paid
 // entitlements during grace (warning); EXPIRED/CANCELLED fall back to Free (destructive).

@@ -25,7 +25,7 @@ export function TransactionFields({ kind, categories, collections }: { kind: api
         <Label htmlFor="fin-cat">{t('fin.category')}</Label>
         <Select id="fin-cat" name="categoryId" required defaultValue="">
           <option value="" disabled>
-            {t('fin.category')}
+            {t('common.choose')}
           </option>
           {categories
             .filter((c) => c.kind === catKind && c.active)

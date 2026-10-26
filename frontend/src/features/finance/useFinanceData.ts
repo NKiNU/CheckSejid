@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useT } from '../../i18n/index.tsx'
+import { useT } from '@/i18n/index.tsx'
 import * as api from './api.ts'
 
 export function useFinanceData(orgId: string, kind: api.Kind) {

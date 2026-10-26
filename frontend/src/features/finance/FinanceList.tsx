@@ -1,4 +1,4 @@
-import { useT } from '../../i18n/index.tsx'
+import { useT } from '@/i18n/index.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'

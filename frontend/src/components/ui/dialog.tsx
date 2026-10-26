@@ -21,14 +21,21 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
           "dialog-content fixed inset-x-0 bottom-0 z-50 grid max-h-[90dvh] gap-4 overflow-y-auto overscroll-contain rounded-t-2xl bg-popover p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-popover-foreground shadow-lg outline-none sm:inset-auto sm:top-1/2 sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:pb-4",
           className
         )}
-        onOpenAutoFocus={() => {
+        {...props}
+        onOpenAutoFocus={(e) => {
           opener.current = document.activeElement
+          props.onOpenAutoFocus?.(e)
         }}
         onCloseAutoFocus={(e) => {
           e.preventDefault()
-          if (opener.current instanceof HTMLElement) opener.current.focus()
+          props.onCloseAutoFocus?.(e)
+          // Opener gone (list reloaded) or never focused (Safari buttons): fall back to the page heading.
+          const o = opener.current
+          if (o instanceof HTMLElement && o !== document.body && o.isConnected) return o.focus()
+          const h1 = document.querySelector<HTMLElement>('main h1')
+          h1?.setAttribute('tabindex', '-1')
+          h1?.focus()
         }}
-        {...props}
       >
         {children}
         <DialogPrimitive.Close

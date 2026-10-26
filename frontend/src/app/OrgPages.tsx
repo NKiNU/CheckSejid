@@ -62,13 +62,13 @@ export function OrgHub() {
 export function OrgFinance() {
   const { org, perms, usable } = useOrg()
   const myUserId = useSession().user!.id
-  return usable && perms.has('finance.read') ? <FinancePanel key={org.id} orgId={org.id} myUserId={myUserId} perms={perms} /> : <NotFound />
+  return usable && perms.has('finance.read') ? <FinancePanel orgId={org.id} myUserId={myUserId} perms={perms} /> : <NotFound />
 }
 
 export function OrgOperations() {
   const { org, perms, usable } = useOrg()
   const myUserId = useSession().user!.id
-  return usable && perms.has('operations.read') ? <OperationsPanel key={org.id} orgId={org.id} myUserId={myUserId} perms={perms} /> : <NotFound />
+  return usable && perms.has('operations.read') ? <OperationsPanel orgId={org.id} myUserId={myUserId} perms={perms} /> : <NotFound />
 }
 
 export function OrgMembers() {
@@ -114,7 +114,7 @@ export function MyOrganisations() {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     listMyOrganisations().then(setOrgs, (e) => setError(errorText(e)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- errorText identity changes with locale; load once on mount
   }, [])
 
   async function create(e: FormEvent<HTMLFormElement>) {

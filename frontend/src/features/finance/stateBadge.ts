@@ -1,4 +1,4 @@
-import type { BadgeVariant } from '../tenancy/orgStatus.ts'
+import type { BadgeVariant } from '@/components/ui/badge.tsx'
 import type { Key } from '../../i18n/en.ts'
 import type { FinanceState } from './api.ts'
 

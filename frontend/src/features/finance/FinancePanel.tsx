@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useT } from '../../i18n/index.tsx'
+import { useT } from '@/i18n/index.tsx'
 import { ConfirmDialog } from '@/components/ConfirmDialog.tsx'
 import { FormDialog } from '@/components/FormDialog.tsx'
 import { Button } from '@/components/ui/button.tsx'

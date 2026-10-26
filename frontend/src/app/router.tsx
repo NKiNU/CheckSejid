@@ -16,7 +16,7 @@ export function RequireAuth() {
   const { status } = useSession()
   const { pathname, search } = useLocation()
   const { t } = useT()
-  if (status === 'loading') return <p className="py-12 text-center">{t('common.loading')}</p>
+  if (status === 'loading') return <p role="status" className="py-12 text-center">{t('common.loading')}</p>
   if (status === 'out') return <Navigate to={'/login?next=' + encodeURIComponent(pathname + search)} replace />
   return <Outlet />
 }

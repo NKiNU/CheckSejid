@@ -1,9 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useT } from '../../i18n/index.tsx'
+import { useT } from '@/i18n/index.tsx'
 import { ConfirmDialog } from '@/components/ConfirmDialog.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { Card, CardContent, CardHeader } from '@/components/ui/card.tsx'
 import { Input } from '@/components/ui/input.tsx'
 import { Label } from '@/components/ui/label.tsx'
 import * as api from './api.ts'
@@ -18,7 +18,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
   const [loaded, setLoaded] = useState(false)
   const [ask, setAsk] = useState<{ kind: 'remove' | 'transfer'; m: api.Member } | 'leave' | null>(null)
   const [open, setOpen] = useState(false) // separate from `ask` so the copy stays put during the close animation
-  const prompt = (a: NonNullable<typeof ask>) => (setAsk(a), setOpen(true))
+  const askFor = (a: NonNullable<typeof ask>) => (setAsk(a), setOpen(true))
 
   const run = async (fn: () => Promise<unknown>) => {
     setError(null)
@@ -39,6 +39,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
       .then(apply)
       .catch((e) => setError(errorText(e)))
       .finally(() => setLoaded(true))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- errorText identity changes with locale; reload only on org change
   }, [orgId])
 
   const can = (key: string) => perms.has(key)
@@ -80,7 +81,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
   return (
     <div className="grid gap-4 pt-6">
       <h1 className="text-2xl font-medium">{t('members.heading')}</h1>
-      {!loaded && !error && <p className="text-muted-foreground">{t('common.loading')}</p>}
+      {!loaded && !error && <p role="status" className="text-muted-foreground">{t('common.loading')}</p>}
       {loaded && members.length === 0 && !error && <p className="text-muted-foreground">{t('members.empty')}</p>}
       {members.length > 0 && (
         <Card>
@@ -112,12 +113,12 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
                     {(editable || canTransfer) && (
                       <div className="flex flex-wrap gap-2">
                         {editable && (
-                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => prompt({ kind: 'remove', m })}>
+                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => askFor({ kind: 'remove', m })}>
                             {t('members.remove')}
                           </Button>
                         )}
                         {canTransfer && (
-                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => prompt({ kind: 'transfer', m })}>
+                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => askFor({ kind: 'transfer', m })}>
                             {t('members.makeOwner')}
                           </Button>
                         )}
@@ -133,7 +134,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
       {can('members.manage') && (
         <Card>
           <CardHeader>
-            <CardTitle>{t('members.addByEmail')}</CardTitle>
+            <h2 className="text-base font-medium">{t('members.addByEmail')}</h2>
           </CardHeader>
           <CardContent>
             <form onSubmit={add} className="grid gap-4">
@@ -150,10 +151,10 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
       {me && !me.isOwner && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-destructive">{t('members.leave')}</CardTitle>
+            <h2 className="text-base font-medium text-destructive">{t('members.leave')}</h2>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <Button type="button" variant="destructive" className="h-11 px-4" onClick={() => prompt('leave')}>
+            <Button type="button" variant="destructive" className="h-11 px-4" onClick={() => askFor('leave')}>
               {t('members.leave')}
             </Button>
           </CardContent>

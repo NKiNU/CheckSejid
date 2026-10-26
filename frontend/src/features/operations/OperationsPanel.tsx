@@ -162,7 +162,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
         title={dialog === 'task' ? t('ops.newTask') : t('ops.newRoster')}
         submitLabel={dialog === 'task' ? t('ops.addTask') : t('ops.addRoster')}
         onSubmit={dialog === 'task' ? addTask : addRoster}
-        error={error}
+        error={open ? error : null}
       >
         {dialog === 'task' ? (
           <>
