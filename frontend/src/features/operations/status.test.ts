@@ -7,8 +7,7 @@ test('maps every task status', () => {
   for (const [s, v] of Object.entries(all)) expect(taskStatusVariant(s as TaskStatus)).toBe(v)
 })
 
-test('groups by local day in first-seen order', () => {
-  const a = new Date(2026, 9, 3, 9).toISOString(), b = new Date(2026, 9, 3, 18).toISOString(), c = new Date(2026, 9, 4, 8).toISOString()
-  const g = groupByDay([{ s: a }, { s: c }, { s: b }], (x) => x.s)
+test('groups by Kuala Lumpur day in first-seen order, whatever the device zone', () => {
+  const g = groupByDay(['2026-10-03T15:59:00Z', '2026-10-03T16:00:00Z', '2026-10-03T01:00:00Z'], (x) => x)
   expect(g.map((x) => [x.day, x.items.length])).toEqual([['2026-10-03', 2], ['2026-10-04', 1]])
 })

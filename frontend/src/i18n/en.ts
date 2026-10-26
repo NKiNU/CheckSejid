@@ -171,7 +171,7 @@ export const en = {
   'ops.noRoster': 'Nothing on the roster yet.',
   'ops.assignee': 'Assignee',
   'ops.dueDate': 'Due date',
-  'ops.person2': 'Person',
+  'ops.member': 'Member',
   'ops.starts': 'Starts',
   'ops.ends': 'Ends',
   'ops.status': 'Status for {title}',

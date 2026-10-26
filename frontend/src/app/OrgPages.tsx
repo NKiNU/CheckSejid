@@ -70,7 +70,7 @@ export function OrgFinance() {
 export function OrgOperations() {
   const { org, perms, usable } = useOrg()
   const myUserId = useSession().user!.id
-  return usable && perms.has('operations.read') ? <OperationsPanel orgId={org.id} myUserId={myUserId} perms={perms} /> : <NotFound />
+  return usable && perms.has('operations.read') ? <OperationsPanel key={org.id} orgId={org.id} myUserId={myUserId} perms={perms} /> : <NotFound />
 }
 
 export function OrgMembers() {

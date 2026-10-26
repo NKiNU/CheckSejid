@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useT } from '../../i18n/index.tsx'
 import { listMembers, type Member } from '../rbac/api.ts'
 import * as api from './api.ts'
-import { groupByDay, taskStatusVariant } from './status.ts'
+import { dayKey, groupByDay, taskStatusVariant } from './status.ts'
 import { FormDialog } from '@/components/FormDialog.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -28,7 +28,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
   const load = () =>
     Promise.all([api.listTasks(orgId), api.listRoster(orgId), listMembers(orgId)]).then(
       ([tk, r, m]) => (setTasks(tk), setRoster(r), setMembers(m)),
-      (e) => (setTasks((v) => v ?? []), setRoster((v) => v ?? []), setError(errorText(e))),
+      (e) => setError(errorText(e)),
     )
   useEffect(() => {
     load()
@@ -94,7 +94,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
                 <Card size="sm">
                   <CardContent className="gap-2">
                     <h3 className="min-w-0 text-base font-medium [overflow-wrap:anywhere]">{task.title}</h3>
-                    <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                    <p id={`tm-${task.id}`} className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
                       {name(task.assigneeUserId)}
                       {task.dueDate && ` · ${t('ops.due', { date: date(task.dueDate) })}`}
                     </p>
@@ -103,7 +103,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
                         <Label htmlFor={`st-${task.id}`} className="sr-only">
                           {t('ops.status', { title: task.title })}
                         </Label>
-                        <Select id={`st-${task.id}`} value={task.status} onChange={(e) => run(() => api.setTaskStatus(orgId, task.id, e.target.value as api.TaskStatus))}>
+                        <Select id={`st-${task.id}`} aria-describedby={`tm-${task.id}`} value={task.status} onChange={(e) => run(() => api.setTaskStatus(orgId, task.id, e.target.value as api.TaskStatus))}>
                           {api.TASK_STATUSES.map((s) => (
                             <option key={s} value={s}>
                               {t(`state.${s}`)}
@@ -139,7 +139,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
                       <CardContent className="gap-2">
                         <p className="min-w-0 text-base font-medium [overflow-wrap:anywhere]">{r.duty}</p>
                         <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                          {name(r.userId)} · {dateTime(r.startsAt)} – {time(r.endsAt)}
+                          {name(r.userId)} · {time(r.startsAt)} – {dayKey(r.endsAt) === g.day ? time(r.endsAt) : dateTime(r.endsAt)}
                         </p>
                         {r.cancelledAt && (
                           <div>
@@ -158,7 +158,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
       {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <FormDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(o) => (setOpen(o), o || setError(null))}
         title={dialog === 'task' ? t('ops.newTask') : t('ops.newRoster')}
         submitLabel={dialog === 'task' ? t('ops.addTask') : t('ops.addRoster')}
         onSubmit={dialog === 'task' ? addTask : addRoster}
@@ -185,7 +185,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
         ) : (
           <>
             <div className={field}>
-              <Label htmlFor="ops-person">{t('ops.person2')}</Label>
+              <Label htmlFor="ops-person">{t('ops.member')}</Label>
               <Select id="ops-person" name="userId" required defaultValue="">
                 <option value="" disabled>
                   {t('ops.person')}
