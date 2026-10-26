@@ -1,13 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useT } from '../../i18n/index.tsx'
+import { Button } from '@/components/ui/button.tsx'
 import * as api from './api.ts'
+import { FinanceList } from './FinanceList.tsx'
+import { FinanceSummary } from './FinanceSummary.tsx'
 
 // Phase 08: record → submit → approve; cancel / void request; copy to new draft; collections with
 // progress; budgets with used/remaining. The server enforces states, keys, ADR-013 and entitlements.
 export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: ReadonlySet<string> }) {
   const { t, locale, error: errorText } = useT()
   const [kind, setKind] = useState<api.Kind>('expense')
-  const [records, setRecords] = useState<api.FinanceRecord[]>([])
+  const [records, setRecords] = useState<api.FinanceRecord[] | null>(null)
   const [categories, setCategories] = useState<api.Category[]>([])
   const [collections, setCollections] = useState<api.Collection[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -63,39 +66,36 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
   const canCreate = perms.has({ income: 'finance.income.create', expense: 'finance.expense.create', budget: 'finance.budget.manage' }[kind])
 
   return (
-    <section>
-      <h3>{t('fin.heading')}</h3>
-      <p>{t('fin.disclaimer')}</p>
-      <select value={kind} onChange={(e) => setKind(e.target.value as api.Kind)}>
+    <div className="grid gap-4 pt-6">
+      <h1 className="text-2xl font-medium">{t('fin.heading')}</h1>
+      <p className="text-sm text-muted-foreground">{t('fin.disclaimer')}</p>
+      <div role="group" aria-label={t('fin.heading')} className="grid grid-cols-3 gap-2">
         {(['expense', 'income', 'budget'] as const).map((k) => (
-          <option key={k} value={k}>
+          <Button
+            key={k}
+            type="button"
+            variant={k === kind ? 'default' : 'outline'}
+            aria-pressed={k === kind}
+            className="h-11 min-w-0 px-2"
+            onClick={() => k !== kind && (setRecords(null), setError(null), setKind(k))}
+          >
             {t(`fin.kind.${k}`)}
-          </option>
+          </Button>
         ))}
-      </select>
-      <ul>
-        {records.map((r) => (
-          <li key={r.id}>
-            {r.name ?? r.description} — {api.formatMoney(r.amount, r.currency, locale)} [{t(`state.${r.state}`)}
-            {r.voidRequested ? `, ${t('fin.voidRequested')}` : ''}]
-            {r.used !== undefined &&
-              ` ${t('fin.usedRemaining', { used: api.formatMoney(r.used, r.currency, locale), remaining: api.formatMoney(r.remaining!, r.currency, locale) })}`}
-            {api.availableActions(kind, r, myUserId, perms).map((a) => (
-              <button key={a} type="button" onClick={() => doAction(r, a)}>
-                {t(`action.${a}`)}
-              </button>
-            ))}
-            {kind === 'expense' && r.state === 'DRAFT' && r.createdById === myUserId && (
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
-                aria-label={t('fin.attach')}
-                onChange={(e) => e.target.files?.[0] && run(() => api.uploadEvidence(orgId, r.id, e.target.files![0]!))}
-              />
-            )}
-          </li>
-        ))}
-      </ul>
+      </div>
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {records && <FinanceSummary records={records} />}
+      <FinanceList
+        kind={kind}
+        records={records}
+        categories={categories}
+        myUserId={myUserId}
+        perms={perms}
+        failed={!!error}
+        onAction={doAction}
+        onAttach={(r, file) => run(() => api.uploadEvidence(orgId, r.id, file))}
+      />
+      <div className="legacy"> {/* 7b: forms and collections move to dialogs/cards */}
       {canCreate && (
         <form onSubmit={create}>
           {kind === 'budget' && <input name="name" placeholder={t('fin.budgetName')} required maxLength={200} />}
@@ -180,7 +180,7 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
           <button type="submit">{t('fin.addCollection')}</button>
         </form>
       )}
-      {error && <p role="alert">{error}</p>}
-    </section>
+      </div>
+    </div>
   )
 }
