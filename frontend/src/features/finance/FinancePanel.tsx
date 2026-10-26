@@ -1,9 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useT } from '../../i18n/index.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import * as api from './api.ts'
 import { FinanceList } from './FinanceList.tsx'
-import { FinanceSummary } from './FinanceSummary.tsx'
 
 // Phase 08: record → submit → approve; cancel / void request; copy to new draft; collections with
 // progress; budgets with used/remaining. The server enforces states, keys, ADR-013 and entitlements.
@@ -15,16 +14,24 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
   const [collections, setCollections] = useState<api.Collection[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  const load = () =>
-    Promise.all([api.listRecords(orgId, kind), api.listCategories(orgId), api.listCollections(orgId)]).then(
-      ([r, c, col]) => (setRecords(r), setCategories(c), setCollections(col)),
-      (e) => setError(errorText(e)),
-    )
+  const kindRef = useRef(kind)
   useEffect(() => {
-    Promise.all([api.listRecords(orgId, kind), api.listCategories(orgId), api.listCollections(orgId)]).then(
-      ([r, c, col]) => (setRecords(r), setCategories(c), setCollections(col)),
-      (e) => setError(errorText(e)),
+    kindRef.current = kind
+  }, [kind])
+  // Drops the result when it is no longer wanted (kind switched or unmounted), so a slow response cannot overwrite a newer list.
+  const fetchAll = (k: api.Kind, live: () => boolean) =>
+    Promise.all([api.listRecords(orgId, k), api.listCategories(orgId), api.listCollections(orgId)]).then(
+      ([r, c, col]) => live() && (setRecords(r), setCategories(c), setCollections(col)),
+      (e) => live() && setError(errorText(e)),
     )
+  const load = () => fetchAll(kind, () => kindRef.current === kind)
+  useEffect(() => {
+    let live = true
+    fetchAll(kind, () => live)
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchAll closes over orgId/errorText; reload only on org or kind change
   }, [orgId, kind])
 
   const run = async (fn: () => Promise<unknown>, form?: HTMLFormElement) => {
@@ -76,7 +83,7 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
             type="button"
             variant={k === kind ? 'default' : 'outline'}
             aria-pressed={k === kind}
-            className="h-11 min-w-0 px-2"
+            className="h-auto min-h-11 min-w-0 whitespace-normal px-2 leading-tight [overflow-wrap:anywhere]"
             onClick={() => k !== kind && (setRecords(null), setError(null), setKind(k))}
           >
             {t(`fin.kind.${k}`)}
@@ -84,7 +91,6 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
         ))}
       </div>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {records && <FinanceSummary records={records} />}
       <FinanceList
         kind={kind}
         records={records}

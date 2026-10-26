@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'
 import * as api from './api.ts'
-import { stateBadge } from './stateBadge.ts'
+import { stateBadges } from './stateBadge.ts'
 
 type Props = {
   kind: api.Kind
@@ -24,7 +24,7 @@ export function FinanceList({ kind, records, categories, myUserId, perms, failed
   return (
     <ul className="grid gap-3 lg:grid-cols-2">
       {records.map((r) => {
-        const b = stateBadge(r.state, r.voidRequested)
+        const badges = stateBadges(r.state, r.voidRequested)
         const cat = categories.find((c) => c.id === r.categoryId)?.name
         const actions = api.availableActions(kind, r, myUserId, perms)
         return (
@@ -32,7 +32,9 @@ export function FinanceList({ kind, records, categories, myUserId, perms, failed
             <Card size="sm">
               <CardContent className="grid gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant={b.variant}>{t(b.labelKey)}</Badge>
+                  {badges.map((b) => (
+                    <Badge key={b.labelKey} variant={b.variant}>{t(b.labelKey)}</Badge>
+                  ))}
                   {cat && <Badge>{cat}</Badge>}
                 </div>
                 <p className="text-xl font-medium [overflow-wrap:anywhere]">{money(r.amount, r.currency)}</p>
