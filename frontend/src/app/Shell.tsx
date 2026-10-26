@@ -42,7 +42,7 @@ export function Shell({ tabs, title, context }: { tabs: Tab[]; title: ReactNode;
         <Nav tabs={tabs} />
         <div className="hidden items-center gap-2 p-3 lg:flex">{actions}</div>
       </aside>
-      <main className="legacy mx-auto w-full min-w-0 max-w-3xl px-4 pb-24 lg:pb-8">
+      <main className="mx-auto w-full min-w-0 max-w-3xl px-4 pb-24 lg:pb-8">
         <Outlet context={context} />
       </main>
     </div>

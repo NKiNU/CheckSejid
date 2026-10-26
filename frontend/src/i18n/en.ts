@@ -9,6 +9,8 @@ export const en = {
   'common.description': 'Description',
   'common.saveDraft': 'Save draft',
   'common.title': 'Title',
+  'common.cancel': 'Cancel',
+  'common.close': 'Close',
 
   'nav.discover': 'Discover',
   'nav.feed': 'Feed',

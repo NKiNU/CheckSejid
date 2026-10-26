@@ -92,3 +92,20 @@
   .legacy [role='alert'] { @apply text-destructive; }
   .legacy section { @apply mb-4 rounded-xl bg-card p-4 shadow-sm; }
 }
+
+@layer components {
+  .dialog-overlay[data-state='open'] { animation: dialog-fade 160ms var(--ease-out); }
+  .dialog-overlay[data-state='closed'] { animation: dialog-fade 120ms var(--ease-out) reverse forwards; }
+  .dialog-content[data-state='open'] { animation: dialog-up 200ms var(--ease-out); }
+  .dialog-content[data-state='closed'] { animation: dialog-up 140ms var(--ease-out) reverse forwards; }
+  @media (min-width: 640px) {
+    .dialog-content[data-state='open'] { animation-name: dialog-pop; }
+    .dialog-content[data-state='closed'] { animation-name: dialog-pop; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dialog-content[data-state] { animation-name: dialog-fade; }
+  }
+}
+@keyframes dialog-fade { from { opacity: 0; } }
+@keyframes dialog-up { from { transform: translateY(100%); } }
+@keyframes dialog-pop { from { opacity: 0; transform: scale(0.96); } }

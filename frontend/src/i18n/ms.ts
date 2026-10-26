@@ -11,6 +11,8 @@ export const ms: Record<Key, string> = {
   'common.description': 'Keterangan',
   'common.saveDraft': 'Simpan draf',
   'common.title': 'Tajuk',
+  'common.cancel': 'Batal',
+  'common.close': 'Tutup',
 
   'nav.discover': 'Teroka',
   'nav.feed': 'Suapan',
