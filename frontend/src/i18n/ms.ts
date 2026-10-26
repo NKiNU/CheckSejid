@@ -75,6 +75,9 @@ export const ms: Record<Key, string> = {
   'orgType.other': 'Lain-lain',
 
   'members.heading': 'Ahli',
+  'members.you': 'Anda',
+  'members.empty': 'Tiada ahli untuk dipaparkan.',
+  'members.removeConfirm': 'Buang {name} daripada organisasi ini?',
   'members.noRole': 'tiada peranan',
   'members.remove': 'Buang',
   'members.makeOwner': 'Jadikan pemilik',

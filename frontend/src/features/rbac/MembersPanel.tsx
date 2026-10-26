@@ -1,14 +1,22 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useT } from '../../i18n/index.tsx'
+import { ConfirmDialog } from '@/components/ConfirmDialog.tsx'
+import { Badge } from '@/components/ui/badge.tsx'
+import { Button } from '@/components/ui/button.tsx'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { Input } from '@/components/ui/input.tsx'
+import { Label } from '@/components/ui/label.tsx'
 import * as api from './api.ts'
 
-// Minimal Phase 03 UI: members with roles, role changes, add/remove, leave, ownership transfer.
+// Phase 03 UI: members with roles, role changes, add/remove, leave, ownership transfer.
 // Controls are hidden from members who lack the permission; the server enforces it regardless.
 export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUserId: string; onLeft: () => void }) {
   const { t, error: errorText } = useT()
   const [perms, setPerms] = useState<Set<string>>(new Set())
   const [members, setMembers] = useState<api.Member[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+  const [ask, setAsk] = useState<{ kind: 'remove' | 'transfer'; m: api.Member } | 'leave' | null>(null)
 
   const run = async (fn: () => Promise<unknown>) => {
     setError(null)
@@ -28,6 +36,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
     fetchState(orgId)
       .then(apply)
       .catch((e) => setError(errorText(e)))
+      .finally(() => setLoaded(true))
   }, [orgId])
 
   const can = (key: string) => perms.has(key)
@@ -52,65 +61,113 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
     })
   }
 
+  const confirmed = () => {
+    if (ask === 'leave') return run(async () => (await api.leave(orgId), onLeft()))
+    if (!ask) return
+    const { kind, m } = ask
+    return run(async () => (await (kind === 'remove' ? api.removeMember(orgId, m.id) : api.transferOwnership(orgId, m.id)), await load()))
+  }
+  const askName = ask && ask !== 'leave' ? ask.m.displayName : ''
+  const copy =
+    ask === 'leave'
+      ? { title: t('members.leave'), body: t('members.leaveConfirm'), label: t('members.leave') }
+      : ask?.kind === 'transfer'
+        ? { title: t('members.makeOwner'), body: t('members.transferConfirm', { name: askName }), label: t('members.makeOwner') }
+        : { title: t('members.remove'), body: t('members.removeConfirm', { name: askName }), label: t('members.remove') }
+
   return (
-    <section>
-      <h3>{t('members.heading')}</h3>
-      <ul>
-        {members.map((m) => {
-          const editable = can('members.manage') && !m.isOwner && m.userId !== myUserId
-          return (
-            <li key={m.id}>
-              <strong>{m.displayName}</strong>
-              {m.title && ` (${m.title})`} — {m.roles.map((r) => t(`role.${r}`)).join(', ') || t('members.noRole')}
-              {editable && (
-                <>
-                  {' '}
-                  {api.ASSIGNABLE_ROLES.map((r) => (
-                    <label key={r}>
-                      <input type="checkbox" checked={m.roles.includes(r)} onChange={() => toggle(m, r)} /> {t(`role.${r}`)}{' '}
-                    </label>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => run(async () => (await api.removeMember(orgId, m.id), await load()))}
-                  >
-                    {t('members.remove')}
-                  </button>
-                </>
-              )}
-              {can('organisation.ownership.transfer') && m.userId !== myUserId && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    confirm(t('members.transferConfirm', { name: m.displayName })) &&
-                    run(async () => (await api.transferOwnership(orgId, m.id), await load()))
-                  }
-                >
-                  {t('members.makeOwner')}
-                </button>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+    <div className="grid gap-4 pt-6">
+      <h1 className="text-2xl font-medium">{t('members.heading')}</h1>
+      {!loaded && !error && <p className="text-muted-foreground">{t('common.loading')}</p>}
+      {loaded && members.length === 0 && !error && <p className="text-muted-foreground">{t('members.empty')}</p>}
+      {members.length > 0 && (
+        <Card>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {members.map((m) => {
+                const editable = can('members.manage') && !m.isOwner && m.userId !== myUserId
+                const canTransfer = can('organisation.ownership.transfer') && m.userId !== myUserId
+                return (
+                  <li key={m.id} className="grid gap-2 py-3 first:pt-0 last:pb-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <strong className="min-w-0 max-w-full [overflow-wrap:anywhere]">{m.displayName}</strong>
+                      {m.userId === myUserId && <Badge variant="neutral">{t('members.you')}</Badge>}
+                      {m.roles.length === 0 && <Badge variant="neutral">{t('members.noRole')}</Badge>}
+                      {m.roles.map((r) => (
+                        <Badge key={r} variant={r === 'owner' ? 'success' : 'neutral'}>{t(`role.${r}`)}</Badge>
+                      ))}
+                    </div>
+                    {m.title && <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">{m.title}</p>}
+                    {editable && (
+                      <div className="grid grid-cols-2 gap-x-4">
+                        {api.ASSIGNABLE_ROLES.map((r) => (
+                          <label key={r} className="flex min-h-11 min-w-0 items-center gap-2 text-sm">
+                            <input type="checkbox" className="size-5 shrink-0" checked={m.roles.includes(r)} onChange={() => toggle(m, r)} /> {t(`role.${r}`)}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {(editable || canTransfer) && (
+                      <div className="flex flex-wrap gap-2">
+                        {editable && (
+                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => setAsk({ kind: 'remove', m })}>
+                            {t('members.remove')}
+                          </Button>
+                        )}
+                        {canTransfer && (
+                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => setAsk({ kind: 'transfer', m })}>
+                            {t('members.makeOwner')}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
       {can('members.manage') && (
-        <form onSubmit={add}>
-          <label>
-            {t('members.addByEmail')} <input name="email" type="email" required maxLength={254} />
-          </label>
-          <button type="submit">{t('members.add')}</button>
-        </form>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('members.addByEmail')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={add} className="grid gap-4">
+              <Label className="grid gap-2">
+                <span className="sr-only">{t('members.addByEmail')}</span>
+                <Input name="email" type="email" required maxLength={254} className="h-11" />
+              </Label>
+              <Button type="submit" className="h-11 px-4">{t('members.add')}</Button>
+            </form>
+          </CardContent>
+        </Card>
       )}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {me && !me.isOwner && (
-        <button
-          type="button"
-          onClick={() => confirm(t('members.leaveConfirm')) && run(async () => (await api.leave(orgId), onLeft()))}
-        >
-          {t('members.leave')}
-        </button>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-destructive">{t('members.leave')}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <p className="text-sm text-muted-foreground">{t('members.leaveConfirm')}</p>
+            <Button type="button" variant="destructive" className="h-11 px-4" onClick={() => setAsk('leave')}>
+              {t('members.leave')}
+            </Button>
+          </CardContent>
+        </Card>
       )}
-      {error && <p role="alert">{error}</p>}
-    </section>
+      <ConfirmDialog
+        open={ask !== null}
+        onOpenChange={(o) => !o && setAsk(null)}
+        title={copy.title}
+        body={copy.body}
+        confirmLabel={copy.label}
+        destructive={ask === 'leave' || ask?.kind === 'remove'}
+        onConfirm={confirmed}
+      />
+    </div>
   )
 }
 

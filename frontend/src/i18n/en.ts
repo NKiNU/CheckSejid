@@ -73,6 +73,9 @@ export const en = {
   'orgType.other': 'Other',
 
   'members.heading': 'Members',
+  'members.you': 'You',
+  'members.empty': 'No members to show.',
+  'members.removeConfirm': 'Remove {name} from this organisation?',
   'members.noRole': 'no role',
   'members.remove': 'Remove',
   'members.makeOwner': 'Make owner',
