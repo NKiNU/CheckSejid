@@ -45,7 +45,7 @@ export const en = {
   'notif.none': 'No notifications.',
 
   'sub.heading': 'Subscription',
-  'sub.summary': '{plan} plan — {status}',
+  'sub.plan': '{plan} plan',
   'sub.trialLeft': '{days} days left in trial',
 
   'org.current': 'Current organisation',

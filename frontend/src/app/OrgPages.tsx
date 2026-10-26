@@ -48,9 +48,7 @@ export function OrgHome() {
           {org.isOwner && <Badge>{t('org.owner')}</Badge>}
         </CardContent>
       </Card>
-      <div className="legacy">
-        <SubscriptionPanel orgId={org.id} />
-      </div>
+      <SubscriptionPanel orgId={org.id} />
       <NavRows items={[['members', t('nav.members')], ['settings', t('nav.settings')]]} />
     </div>
   )

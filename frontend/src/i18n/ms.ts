@@ -47,7 +47,7 @@ export const ms: Record<Key, string> = {
   'notif.none': 'Tiada notifikasi.',
 
   'sub.heading': 'Langganan',
-  'sub.summary': 'Pelan {plan} — {status}',
+  'sub.plan': 'Pelan {plan}',
   'sub.trialLeft': '{days} hari lagi dalam tempoh percubaan',
 
   'org.current': 'Organisasi semasa',
