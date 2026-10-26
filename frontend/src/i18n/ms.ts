@@ -41,6 +41,7 @@ export const ms: Record<Key, string> = {
 
   'notif.heading': 'Notifikasi', // REVIEW: "Notifikasi" vs "Pemberitahuan"
   'notif.unread': '{count} belum dibaca',
+  'notif.new': 'Belum dibaca',
   'notif.markAll': 'Tandakan semua sudah dibaca',
   'notif.markRead': 'Tandakan sudah dibaca',
   'notif.none': 'Tiada notifikasi.',

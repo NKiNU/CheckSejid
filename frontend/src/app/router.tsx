@@ -69,7 +69,7 @@ export const router = createBrowserRouter([
         element: <RequireAuth />,
         children: [
           { path: '/feed', element: <><MyOrganisations /><FeedPanel /></> },
-          { path: '/notifications', element: legacy(<NotificationsPanel />) },
+          { path: '/notifications', element: <NotificationsPanel /> },
         ],
       },
       { path: '*', element: legacy(<NotFound />) },

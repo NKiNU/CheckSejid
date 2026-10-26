@@ -39,6 +39,7 @@ export const en = {
 
   'notif.heading': 'Notifications',
   'notif.unread': '{count} unread',
+  'notif.new': 'Unread',
   'notif.markAll': 'Mark all read',
   'notif.markRead': 'Mark read',
   'notif.none': 'No notifications.',
