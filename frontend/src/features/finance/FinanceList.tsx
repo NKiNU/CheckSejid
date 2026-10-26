@@ -59,7 +59,11 @@ export function FinanceList({ kind, records, categories, myUserId, perms, failed
                     accept={api.RECEIPT_TYPES.join(',')}
                     aria-label={t('fin.attach')}
                     className="min-h-11 w-full min-w-0 text-base"
-                    onChange={(e) => e.target.files?.[0] && onAttach(r, e.target.files[0])}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      e.target.value = ''
+                      if (f) onAttach(r, f)
+                    }}
                   />
                 )}
               </CardContent>

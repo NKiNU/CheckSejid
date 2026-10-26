@@ -86,7 +86,7 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
   const canCollection = perms.has('finance.collection.manage')
   const reasonLabel = pend ? t(`action.${pend.a}`) : ''
   const dialogs: Record<Dlg, { title: string; submit: string; onSubmit: (e: FormEvent<HTMLFormElement>) => Promise<unknown> | void }> = {
-    tx: { title: t('fin.new'), submit: t('common.saveDraft'), onSubmit: create },
+    tx: { title: t(`fin.new.${kind}`), submit: t('common.saveDraft'), onSubmit: create },
     cat: { title: t('fin.newCategory'), submit: t('fin.addCategory'), onSubmit: addCategory },
     col: { title: t('fin.newCollection'), submit: t('fin.addCollection'), onSubmit: addCollection },
     reason: { title: reasonLabel, submit: reasonLabel, onSubmit: sendReason },
@@ -116,7 +116,7 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
           <div className="flex flex-wrap gap-2">
             {canCreate && (
               <Button type="button" className="h-auto min-h-11 whitespace-normal px-4" onClick={() => show('tx')}>
-                {t('fin.new')}
+                {t(`fin.new.${kind}`)}
               </Button>
             )}
             {canCategory && (
@@ -151,7 +151,7 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
         destructive
         onConfirm={() => pend && run(() => api.act(orgId, kind, pend.r.id, pend.a))}
       />
-      <FormDialog open={open} onOpenChange={(o) => (setOpen(o), o || setError(null))} title={d.title} submitLabel={d.submit} onSubmit={d.onSubmit} error={error}>
+      <FormDialog open={open} onOpenChange={(o) => (setOpen(o), o || setError(null))} title={d.title} submitLabel={d.submit} onSubmit={d.onSubmit} error={open ? error : null}>
         {dlg === 'tx' && <TransactionFields kind={kind} categories={categories} collections={collections} />}
         {dlg === 'cat' && <CategoryFields />}
         {dlg === 'col' && <CollectionFields />}

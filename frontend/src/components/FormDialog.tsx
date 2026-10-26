@@ -16,7 +16,7 @@ export function FormDialog({ open, onOpenChange, title, onSubmit, submitLabel, e
   const { t } = useT()
   const [busy, setBusy] = useState(false)
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => (busy && !o) || onOpenChange(o)}>
       <DialogContent aria-describedby={undefined}>
         <DialogTitle>{title}</DialogTitle>
         <form
@@ -35,7 +35,7 @@ export function FormDialog({ open, onOpenChange, title, onSubmit, submitLabel, e
           {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="h-11 px-4">{t('common.cancel')}</Button>
+              <Button type="button" variant="outline" disabled={busy} className="h-11 px-4">{t('common.cancel')}</Button>
             </DialogClose>
             <Button type="submit" disabled={busy || !open} className="h-11 px-4">{submitLabel}</Button>
           </div>

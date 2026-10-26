@@ -70,7 +70,7 @@ export const needsReason = (a: Action) => a === 'void' || a === 'void-request'
 // ADR-020: expense evidence is JPEG, PNG, WebP or PDF up to 5 MB (the server re-checks by content).
 export const RECEIPT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
 export const RECEIPT_MAX_BYTES = 5 * 1024 * 1024
-export const receiptOk = (f: Blob) => RECEIPT_TYPES.includes(f.type) && f.size <= RECEIPT_MAX_BYTES
+export const receiptOk = (f: Blob) => (f.type === '' || RECEIPT_TYPES.includes(f.type)) && f.size <= RECEIPT_MAX_BYTES
 
 // Same payload shapes as before the redesign (ADR-022); null means the amount was invalid.
 export function parseTransaction(kind: Kind, f: FormData): Record<string, unknown> | null {

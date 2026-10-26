@@ -46,7 +46,7 @@ export function ReasonField() {
   return (
     <div className={field}>
       <Label htmlFor="fin-reason">{t('fin.reason')}</Label>
-      <Textarea id="fin-reason" name="reason" required rows={3} />
+      <Textarea id="fin-reason" name="reason" required rows={3} maxLength={500} />
     </div>
   )
 }

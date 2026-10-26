@@ -35,5 +35,6 @@ describe('finance api', () => {
 it('receiptOk enforces the ADR-020 type list and 5 MB cap', () => {
   expect(receiptOk(new Blob(['x'], { type: 'application/pdf' }))).toBe(true)
   expect(receiptOk(new Blob(['x'], { type: 'text/html' }))).toBe(false)
+  expect(receiptOk(new Blob(['x']))).toBe(true) // empty type: server checks magic bytes
   expect(receiptOk(new Blob([new Uint8Array(RECEIPT_MAX_BYTES + 1)], { type: 'image/png' }))).toBe(false)
 })
