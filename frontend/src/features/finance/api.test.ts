@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, availableActions, formatMoney, toMinor, type FinanceRecord } from './api.ts'
+import { act, availableActions, formatMoney, receiptOk, RECEIPT_MAX_BYTES, toMinor, type FinanceRecord } from './api.ts'
 
 afterEach(() => vi.unstubAllGlobals())
 const rec = (over: Partial<FinanceRecord>): FinanceRecord =>
@@ -30,4 +30,10 @@ describe('finance api', () => {
     await act('o1', 'income', 'r1', 'void-request', 'Counted twice')
     expect([fn.mock.calls[0]![0], fn.mock.calls[0]![1]!.body]).toEqual(['/orgs/o1/finance/incomes/r1/void-request', '{"reason":"Counted twice"}'])
   })
+})
+
+it('receiptOk enforces the ADR-020 type list and 5 MB cap', () => {
+  expect(receiptOk(new Blob(['x'], { type: 'application/pdf' }))).toBe(true)
+  expect(receiptOk(new Blob(['x'], { type: 'text/html' }))).toBe(false)
+  expect(receiptOk(new Blob([new Uint8Array(RECEIPT_MAX_BYTES + 1)], { type: 'image/png' }))).toBe(false)
 })

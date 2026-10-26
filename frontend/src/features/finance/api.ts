@@ -66,3 +66,21 @@ export function availableActions(kind: Kind, r: FinanceRecord, myUserId: string,
   return out
 }
 export const needsReason = (a: Action) => a === 'void' || a === 'void-request'
+
+// ADR-020: expense evidence is JPEG, PNG, WebP or PDF up to 5 MB (the server re-checks by content).
+export const RECEIPT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+export const RECEIPT_MAX_BYTES = 5 * 1024 * 1024
+export const receiptOk = (f: Blob) => RECEIPT_TYPES.includes(f.type) && f.size <= RECEIPT_MAX_BYTES
+
+// Same payload shapes as before the redesign (ADR-022); null means the amount was invalid.
+export function parseTransaction(kind: Kind, f: FormData): Record<string, unknown> | null {
+  const amount = toMinor(String(f.get('amount')))
+  if (amount === null) return null
+  const s = (k: string) => String(f.get(k) ?? '').trim()
+  const common = { amount, categoryId: s('categoryId'), description: s('description') }
+  return kind === 'income'
+    ? { ...common, receivedOn: s('date'), collectionId: s('collectionId') || null }
+    : kind === 'expense'
+      ? { ...common, spentOn: s('date'), payee: s('payee') || null }
+      : { ...common, name: s('name'), periodStart: s('periodStart'), periodEnd: s('periodEnd') }
+}

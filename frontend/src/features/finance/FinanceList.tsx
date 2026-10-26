@@ -56,7 +56,7 @@ export function FinanceList({ kind, records, categories, myUserId, perms, failed
                 {kind === 'expense' && r.state === 'DRAFT' && r.createdById === myUserId && (
                   <input
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    accept={api.RECEIPT_TYPES.join(',')}
                     aria-label={t('fin.attach')}
                     className="min-h-11 w-full min-w-0 text-base"
                     onChange={(e) => e.target.files?.[0] && onAttach(r, e.target.files[0])}
