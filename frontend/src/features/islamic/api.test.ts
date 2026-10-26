@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { currentPosition, formatTime, prayerTimesPath, qiblaBearing } from './api.ts'
+import { currentPosition, formatTime, nextPrayer, prayerTimesPath, qiblaBearing } from './api.ts'
 
 describe('islamic api', () => {
   it('rounds the location before sending it (ADR-023 §1)', () => {
@@ -14,6 +14,13 @@ describe('islamic api', () => {
   it('computes the Qibla bearing (great circle to the Kaaba)', () => {
     expect(qiblaBearing(3.139, 101.6869)).toBeCloseTo(292.5, 0) // Kuala Lumpur ≈ 292.5°
     expect(qiblaBearing(51.5074, -0.1278)).toBeCloseTo(118.99, 0) // London ≈ 119°
+  })
+
+  it('picks the next obligatory prayer', () => {
+    const t = { fajr: '2026-10-05T22:00:00Z', dhuhr: '2026-10-06T05:00:00Z', asr: '2026-10-06T08:00:00Z', maghrib: '2026-10-06T11:00:00Z', isha: '2026-10-06T12:00:00Z' }
+    expect(nextPrayer(t, Date.parse('2026-10-05T20:00:00Z'))).toBe('fajr')
+    expect(nextPrayer(t, Date.parse('2026-10-06T09:00:00Z'))).toBe('maghrib')
+    expect(nextPrayer(t, Date.parse('2026-10-06T13:00:00Z'))).toBeUndefined()
   })
 
   it('reports unavailable location honestly (ISL-007)', async () => {

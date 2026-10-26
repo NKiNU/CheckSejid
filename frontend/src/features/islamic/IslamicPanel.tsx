@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useT } from '../../i18n/index.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -16,7 +16,6 @@ const readZone = () => {
   }
 }
 const PRAYERS = ['imsak', 'fajr', 'syuruk', 'dhuhr', 'asr', 'maghrib', 'isha'] as const
-const OBLIGATORY = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']
 
 // Phase 09: prayer times for the visitor's zone or location, with provenance; Qibla from the device.
 export function IslamicPanel() {
@@ -27,6 +26,12 @@ export function IslamicPanel() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [at, setAt] = useState(0) // when the times were fetched; "next" is judged against it
+
+  useEffect(() => {
+    if (!times) return
+    const id = setInterval(() => setAt(Date.now()), 60_000)
+    return () => clearInterval(id)
+  }, [times])
 
   async function show(useLocation: boolean) {
     setError(null)
@@ -64,8 +69,7 @@ export function IslamicPanel() {
   const hijriLabel = times && t(times.hijri.label === 'Hijri (JAKIM)' ? 'prayer.hijriJakim' : 'prayer.hijriCalc')
   const source = !times ? '' : times.source.kind === 'jakim' ? t('prayer.srcJakim', { zone: times.source.zone }) : t('prayer.srcCalc')
 
-  // The first obligatory prayer still ahead (instants compare the same in any time zone).
-  const next = times && OBLIGATORY.find((k) => times.times[k as (typeof PRAYERS)[number]] && new Date(times.times[k as (typeof PRAYERS)[number]]!).getTime() > at)
+  const next = times && api.nextPrayer(times.times, at)
   const wrap = '[overflow-wrap:anywhere]'
 
   return (
@@ -130,9 +134,12 @@ export function IslamicPanel() {
           {qibla !== null && (
             <div className="flex items-center gap-4">
               {/* ponytail: static arrow pointing at the bearing from the top (true north); no animation, so reduced-motion needs nothing extra */}
-              <svg viewBox="0 0 24 24" className="size-12 shrink-0 text-primary" aria-hidden="true" style={{ transform: `rotate(${qibla}deg)` }}>
-                <path d="M12 2 L18 20 L12 16 L6 20 Z" fill="currentColor" />
-              </svg>
+              <div className="relative size-14 shrink-0 pt-3 text-primary" aria-hidden="true">
+                <span className="absolute inset-x-0 top-0 text-center text-xs font-medium leading-none text-muted-foreground">N</span>
+                <svg viewBox="0 0 24 24" className="size-11 mx-auto" style={{ transform: `rotate(${qibla}deg)` }}>
+                  <path d="M12 2 L18 20 L12 16 L6 20 Z" fill="currentColor" />
+                </svg>
+              </div>
               <p className={`min-w-0 text-sm ${wrap}`}>{t('qibla.result', { deg: number(qibla, 1) })}</p>
             </div>
           )}

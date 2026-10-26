@@ -27,6 +27,10 @@ export const getPrayerTimes = async (q: Parameters<typeof prayerTimesPath>[0]) =
 export const formatTime = (iso: string, timeZone: string, locale = 'en-GB') =>
   new Intl.DateTimeFormat(locale, { timeZone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso))
 
+// The first obligatory prayer still ahead of `now` (ms); instants compare the same in any zone.
+export const nextPrayer = (t: PrayerTimes['times'], now: number) =>
+  (['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const).find((k) => t[k] && Date.parse(t[k]!) > now)
+
 // JAKIM zone codes by state (ADR-023: codes only; district names to come from JAKIM's official list).
 export const JAKIM_ZONES: Record<string, string[]> = {
   Johor: ['JHR01', 'JHR02', 'JHR03', 'JHR04'],
