@@ -61,7 +61,7 @@ export const router = createBrowserRouter([
         element: (
           <>
             <DiscoverPanel />
-            {legacy(<div id="prayer" className="scroll-mt-20"><IslamicPanel /></div>)}
+            <div id="prayer" className="scroll-mt-20"><IslamicPanel /></div>
           </>
         ),
       },

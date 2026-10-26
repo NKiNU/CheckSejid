@@ -238,6 +238,7 @@ export const en = {
   'prayer.srcJakim': 'JAKIM e-Solat, zone {zone}',
   'prayer.srcCalc': 'Calculated (Fajr 20°, Isha 18°)',
   'prayer.source': 'Source: {source}. Times shown in {tz}. Follow your local religious authority where it differs.',
+  'prayer.next': 'Next',
   'prayer.imsak': 'Imsak',
   'prayer.fajr': 'Fajr (Subuh)',
   'prayer.syuruk': 'Sunrise (Syuruk)',

@@ -1,5 +1,10 @@
 import { useState } from 'react'
 import { useT } from '../../i18n/index.tsx'
+import { Badge } from '@/components/ui/badge.tsx'
+import { Button } from '@/components/ui/button.tsx'
+import { Card, CardContent } from '@/components/ui/card.tsx'
+import { Label } from '@/components/ui/label.tsx'
+import { Select } from '@/components/ui/select.tsx'
 import * as api from './api.ts'
 
 const ZONE_KEY = 'masyarakat.jakimZone' // the visitor's own browser only (ADR-023 §1)
@@ -11,6 +16,7 @@ const readZone = () => {
   }
 }
 const PRAYERS = ['imsak', 'fajr', 'syuruk', 'dhuhr', 'asr', 'maghrib', 'isha'] as const
+const OBLIGATORY = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']
 
 // Phase 09: prayer times for the visitor's zone or location, with provenance; Qibla from the device.
 export function IslamicPanel() {
@@ -19,9 +25,12 @@ export function IslamicPanel() {
   const [times, setTimes] = useState<api.PrayerTimes | null>(null)
   const [qibla, setQibla] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [at, setAt] = useState(0) // when the times were fetched; "next" is judged against it
 
   async function show(useLocation: boolean) {
     setError(null)
+    setBusy(true)
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
       const pos = useLocation ? await api.currentPosition() : undefined
@@ -32,8 +41,11 @@ export function IslamicPanel() {
         // storage unavailable: nothing to remember
       }
       setTimes(await api.getPrayerTimes({ zone: useLocation ? undefined : zone, ...pos, tz }))
+      setAt(Date.now())
     } catch (e) {
       setError(errorText(e))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -52,51 +64,81 @@ export function IslamicPanel() {
   const hijriLabel = times && t(times.hijri.label === 'Hijri (JAKIM)' ? 'prayer.hijriJakim' : 'prayer.hijriCalc')
   const source = !times ? '' : times.source.kind === 'jakim' ? t('prayer.srcJakim', { zone: times.source.zone }) : t('prayer.srcCalc')
 
+  // The first obligatory prayer still ahead (instants compare the same in any time zone).
+  const next = times && OBLIGATORY.find((k) => times.times[k as (typeof PRAYERS)[number]] && new Date(times.times[k as (typeof PRAYERS)[number]]!).getTime() > at)
+  const wrap = '[overflow-wrap:anywhere]'
+
   return (
-    <section>
-      <h2>{t('prayer.heading')}</h2>
-      <select value={zone} onChange={(e) => setZone(e.target.value)} aria-label={t('prayer.zone')}>
-        <option value="">{t('prayer.chooseZone')}</option>
-        {Object.entries(api.JAKIM_ZONES).map(([state, zones]) => (
-          <optgroup key={state} label={state}>
-            {zones.map((z) => (
-              <option key={z}>{z}</option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      <button type="button" onClick={() => show(false)}>
-        {t('prayer.showZone')}
-      </button>
-      <button type="button" onClick={() => show(true)}>
-        {t('prayer.useLocation')}
-      </button>
-      {times && (
-        <div>
-          <p>
-            {t('prayer.gregorian')}: {times.gregorian.date} · {hijriLabel}: {times.hijri.date}
-          </p>
-          <table>
-            <tbody>
-              {PRAYERS.filter((k) => times.times[k]).map((k) => (
-                <tr key={k}>
-                  <th>{t(`prayer.${k}`)}</th>
-                  <td>{api.formatTime(times.times[k]!, times.timezone, locale)}</td>
-                </tr>
+    <div className="grid gap-4 pt-2">
+      <Card>
+        <CardContent>
+          <h2 className="text-xl font-medium">{t('prayer.heading')}</h2>
+          <div className="grid min-w-0 gap-2">
+            <Label htmlFor="prayer-zone">{t('prayer.zone')}</Label>
+            <Select id="prayer-zone" value={zone} onChange={(e) => setZone(e.target.value)}>
+              <option value="">{t('prayer.chooseZone')}</option>
+              {Object.entries(api.JAKIM_ZONES).map(([state, zones]) => (
+                <optgroup key={state} label={state}>
+                  {zones.map((z) => (
+                    <option key={z}>{z}</option>
+                  ))}
+                </optgroup>
               ))}
-            </tbody>
-          </table>
-          <p>
-            {t('prayer.source', { source, tz: times.timezone })}
-          </p>
-        </div>
-      )}
-      <h2>{t('qibla.heading')}</h2>
-      <button type="button" onClick={findQibla}>
-        {t('qibla.find')}
-      </button>
-      {qibla !== null && <p>{t('qibla.result', { deg: number(qibla, 1) })}</p>}
-      {error && <p role="alert">{error}</p>}
-    </section>
+            </Select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" className="h-auto min-h-11 whitespace-normal" disabled={busy} onClick={() => show(false)}>
+              {t('prayer.showZone')}
+            </Button>
+            <Button type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" disabled={busy} onClick={() => show(true)}>
+              {t('prayer.useLocation')}
+            </Button>
+          </div>
+          {busy && <p role="status" className="text-muted-foreground">{t('common.loading')}</p>}
+          {times && (
+            <>
+              <p className={`text-sm ${wrap}`}>
+                {t('prayer.gregorian')}: {times.gregorian.date}
+                <br />
+                {hijriLabel}: {times.hijri.date}
+              </p>
+              <ul className="grid gap-1">
+                {PRAYERS.filter((k) => times.times[k]).map((k) => (
+                  <li
+                    key={k}
+                    aria-current={k === next ? 'time' : undefined}
+                    className={`flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-3 py-2 ${k === next ? 'bg-primary/10 font-medium' : ''}`}
+                  >
+                    <span className={`min-w-0 ${wrap}`}>
+                      {t(`prayer.${k}`)} {k === next && <Badge variant="success">{t('prayer.next')}</Badge>}
+                    </span>
+                    <span className="tabular-nums">{api.formatTime(times.times[k]!, times.timezone, locale)}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className={`text-xs text-muted-foreground ${wrap}`}>{t('prayer.source', { source, tz: times.timezone })}</p>
+            </>
+          )}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent>
+          <h2 className="text-xl font-medium">{t('qibla.heading')}</h2>
+          <Button type="button" variant="outline" className="h-auto min-h-11 w-fit max-w-full whitespace-normal" onClick={findQibla}>
+            {t('qibla.find')}
+          </Button>
+          {qibla !== null && (
+            <div className="flex items-center gap-4">
+              {/* ponytail: static arrow pointing at the bearing from the top (true north); no animation, so reduced-motion needs nothing extra */}
+              <svg viewBox="0 0 24 24" className="size-12 shrink-0 text-primary" aria-hidden="true" style={{ transform: `rotate(${qibla}deg)` }}>
+                <path d="M12 2 L18 20 L12 16 L6 20 Z" fill="currentColor" />
+              </svg>
+              <p className={`min-w-0 text-sm ${wrap}`}>{t('qibla.result', { deg: number(qibla, 1) })}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      {error && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{error}</p>}
+    </div>
   )
 }

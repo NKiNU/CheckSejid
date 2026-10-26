@@ -239,6 +239,7 @@ export const ms: Record<Key, string> = {
   'prayer.srcJakim': 'e-Solat JAKIM, zon {zone}',
   'prayer.srcCalc': 'Dikira (Subuh 20°, Isyak 18°)',
   'prayer.source': 'Sumber: {source}. Waktu dipaparkan dalam {tz}. Ikut pihak berkuasa agama tempatan jika berbeza.',
+  'prayer.next': 'Seterusnya',
   'prayer.imsak': 'Imsak',
   'prayer.fajr': 'Subuh',
   'prayer.syuruk': 'Syuruk',
