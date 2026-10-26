@@ -17,6 +17,8 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [ask, setAsk] = useState<{ kind: 'remove' | 'transfer'; m: api.Member } | 'leave' | null>(null)
+  const [open, setOpen] = useState(false) // separate from `ask` so the copy stays put during the close animation
+  const prompt = (a: NonNullable<typeof ask>) => (setAsk(a), setOpen(true))
 
   const run = async (fn: () => Promise<unknown>) => {
     setError(null)
@@ -99,7 +101,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
                     </div>
                     {m.title && <p className="min-w-0 text-sm text-muted-foreground [overflow-wrap:anywhere]">{m.title}</p>}
                     {editable && (
-                      <div className="grid grid-cols-2 gap-x-4">
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-4">
                         {api.ASSIGNABLE_ROLES.map((r) => (
                           <label key={r} className="flex min-h-11 min-w-0 items-center gap-2 text-sm">
                             <input type="checkbox" className="size-5 shrink-0" checked={m.roles.includes(r)} onChange={() => toggle(m, r)} /> {t(`role.${r}`)}
@@ -110,12 +112,12 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
                     {(editable || canTransfer) && (
                       <div className="flex flex-wrap gap-2">
                         {editable && (
-                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => setAsk({ kind: 'remove', m })}>
+                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => prompt({ kind: 'remove', m })}>
                             {t('members.remove')}
                           </Button>
                         )}
                         {canTransfer && (
-                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => setAsk({ kind: 'transfer', m })}>
+                          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => prompt({ kind: 'transfer', m })}>
                             {t('members.makeOwner')}
                           </Button>
                         )}
@@ -151,16 +153,15 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
             <CardTitle className="text-destructive">{t('members.leave')}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <p className="text-sm text-muted-foreground">{t('members.leaveConfirm')}</p>
-            <Button type="button" variant="destructive" className="h-11 px-4" onClick={() => setAsk('leave')}>
+            <Button type="button" variant="destructive" className="h-11 px-4" onClick={() => prompt('leave')}>
               {t('members.leave')}
             </Button>
           </CardContent>
         </Card>
       )}
       <ConfirmDialog
-        open={ask !== null}
-        onOpenChange={(o) => !o && setAsk(null)}
+        open={open}
+        onOpenChange={setOpen}
         title={copy.title}
         body={copy.body}
         confirmLabel={copy.label}
