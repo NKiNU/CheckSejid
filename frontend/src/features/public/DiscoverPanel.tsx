@@ -28,7 +28,7 @@ export function DiscoverPanel() {
   }
   useEffect(() => {
     api.discover({}).then((r) => setResult(r.organisations), (e) => setError(message(e)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- message identity changes with locale
   }, [])
 
   const field = 'grid min-w-0 gap-2'
@@ -67,15 +67,15 @@ export function DiscoverPanel() {
         <ul className="grid gap-3 lg:grid-cols-2">
           {result.map((o) => (
             <li key={o.id} className="min-w-0">
-              <button type="button" onClick={() => setSelected(o.id)} className="block min-h-11 w-full rounded-xl text-start outline-none focus-visible:ring-2 focus-visible:ring-ring active:opacity-80">
-                <Card size="sm" className="h-full">
-                  <CardContent className="gap-1">
-                    <span className="text-base font-medium [overflow-wrap:anywhere]">{o.name}</span>
-                    <span className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                      {[o.type && t(`orgType.${o.type as (typeof ORG_TYPES)[number]}`), o.state].filter(Boolean).join(' · ')}
-                    </span>
-                  </CardContent>
-                </Card>
+              <button
+                type="button"
+                onClick={() => setSelected(o.id)}
+                className="grid min-h-11 w-full gap-1 rounded-xl bg-card p-4 text-start text-sm text-card-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring active:opacity-80"
+              >
+                <span className="block text-base font-medium [overflow-wrap:anywhere]">{o.name}</span>
+                <span className="block text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                  {[o.type && t(`orgType.${o.type as (typeof ORG_TYPES)[number]}`), o.state].filter(Boolean).join(' · ')}
+                </span>
               </button>
             </li>
           ))}

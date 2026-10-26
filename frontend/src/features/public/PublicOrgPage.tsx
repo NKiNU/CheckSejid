@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '../../i18n/index.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'
@@ -11,13 +11,19 @@ export function PublicOrgPage({ id }: { id: string }) {
   const [posts, setPosts] = useState<Post[]>([])
   const [events, setEvents] = useState<HubEvent[]>([])
   const [error, setError] = useState<string | null>(null)
+  const ref = useRef<HTMLElement>(null)
   useEffect(() => {
     Promise.all([api.getPublicOrganisation(id), publicPosts(id), publicEvents(id)]).then(
       ([o, p, e]) => (setOrg(o), setPosts(p), setEvents(e)),
       (e) => setError(message(e)),
     )
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- message identity changes with locale
   }, [id])
+  // Selected org renders below the results; bring it into view (behavior auto honours reduced motion).
+  const loaded = org !== null
+  useEffect(() => {
+    if (loaded) ref.current?.scrollIntoView({ block: 'start', behavior: 'auto' })
+  }, [loaded])
   if (error) return <p role="alert" className="text-sm text-destructive">{error}</p>
   if (!org) return <p role="status" className="text-muted-foreground">{t('common.loading')}</p>
 
@@ -33,7 +39,7 @@ export function PublicOrgPage({ id }: { id: string }) {
 
   const contact = [[org.addressLine, org.state, org.country].filter(Boolean).join(', '), org.contactPhone, org.contactEmail].filter(Boolean)
   return (
-    <article className="grid gap-4">
+    <article ref={ref} className="grid scroll-mt-4 gap-4">
       <Card className="gap-0 py-0">
         {org.coverUrl ? <img src={org.coverUrl} alt="" className="h-36 w-full object-cover sm:h-48" /> : <div className="h-16 bg-muted" aria-hidden />}
         <CardContent className="gap-3 py-4">

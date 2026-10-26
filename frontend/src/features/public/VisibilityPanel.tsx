@@ -64,7 +64,11 @@ export function VisibilityPanel({ orgId, visibility, canEdit, logoUrl, coverUrl 
               type="file"
               accept="image/jpeg,image/png,image/webp"
               className="peer sr-only"
-              onChange={(e) => upload(which, e.target.files?.[0])}
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0]
+                e.currentTarget.value = '' // re-picking the same file must fire onChange
+                upload(which, file)
+              }}
             />
             <label htmlFor={`vis-${which}`} className={pick}>
               {t(`vis.${which}`)}
