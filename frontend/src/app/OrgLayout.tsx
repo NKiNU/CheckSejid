@@ -50,14 +50,14 @@ export function OrgLayout() {
     }
   }, [orgId])
 
-  if (!state || state.id !== orgId) return <p className="py-12 text-center">{t('common.loading')}</p>
+  if (!state || state.id !== orgId) return <p role="status" className="py-12 text-center text-muted-foreground">{t('common.loading')}</p>
   if ('error' in state)
     return (
       <div className="mx-auto max-w-md p-4 pt-12">
         <Card>
           <CardContent className="grid gap-3 pt-6">
-            <p role="alert">{errorText(state.error)}</p>
-            <Link to="/feed" className="text-primary underline">{t('common.back')}</Link>
+            <p role="alert" className="text-destructive">{errorText(state.error)}</p>
+            <Link to="/feed" className="inline-flex min-h-11 items-center text-primary underline">{t('common.back')}</Link>
           </CardContent>
         </Card>
       </div>

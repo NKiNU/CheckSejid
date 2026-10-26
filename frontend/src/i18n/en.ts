@@ -48,7 +48,10 @@ export const en = {
   'sub.trialLeft': '{days} days left in trial',
 
   'org.current': 'Current organisation',
-  'org.owner': 'owner',
+  'org.owner': 'Owner',
+  'org.none': 'You are not in any organisation yet.',
+  'org.new': 'New organisation',
+  'org.status': 'Status',
   'org.newName': 'New organisation name',
   'org.create': 'Create organisation',
   'org.profile': 'Organisation profile',

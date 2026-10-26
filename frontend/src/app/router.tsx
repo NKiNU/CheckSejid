@@ -40,13 +40,13 @@ export const router = createBrowserRouter([
         path: '/org/:orgId',
         element: <OrgLayout />,
         children: [
-          { index: true, element: legacy(<OrgHome />) },
+          { index: true, element: <OrgHome /> },
           { path: 'hub', element: legacy(<OrgHub />) },
           { path: 'finance', element: legacy(<OrgFinance />) },
           { path: 'operations', element: legacy(<OrgOperations />) },
           { path: 'members', element: legacy(<OrgMembers />) },
-          { path: 'settings', element: legacy(<OrgSettings />) },
-          { path: 'more', element: legacy(<OrgMore />) },
+          { path: 'settings', element: <OrgSettings /> },
+          { path: 'more', element: <OrgMore /> },
           { path: '*', element: legacy(<NotFound />) },
         ],
       },
@@ -67,7 +67,7 @@ export const router = createBrowserRouter([
       {
         element: <RequireAuth />,
         children: [
-          { path: '/feed', element: legacy(<><MyOrganisations /><FeedPanel /></>) },
+          { path: '/feed', element: <><MyOrganisations />{legacy(<FeedPanel />)}</> },
           { path: '/notifications', element: legacy(<NotificationsPanel />) },
         ],
       },

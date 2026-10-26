@@ -50,7 +50,10 @@ export const ms: Record<Key, string> = {
   'sub.trialLeft': '{days} hari lagi dalam tempoh percubaan',
 
   'org.current': 'Organisasi semasa',
-  'org.owner': 'pemilik', // REVIEW: "pemilik" vs "pemegang amanah" for masjid context
+  'org.owner': 'Pemilik', // REVIEW: "pemilik" vs "pemegang amanah" for masjid context
+  'org.none': 'Anda belum menyertai mana-mana organisasi.',
+  'org.new': 'Organisasi baharu',
+  'org.status': 'Status',
   'org.newName': 'Nama organisasi baharu',
   'org.create': 'Cipta organisasi',
   'org.profile': 'Profil organisasi',
