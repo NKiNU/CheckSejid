@@ -164,6 +164,16 @@ export const ms: Record<Key, string> = {
   'ops.person': 'Orang…',
   'ops.duty': 'Tugas (cth. Imam, Pembersihan)',
   'ops.addRoster': 'Tambah ke jadual tugas',
+  'ops.newTask': 'Tugasan baharu',
+  'ops.newRoster': 'Tugas baharu',
+  'ops.noTasks': 'Belum ada tugasan.',
+  'ops.noRoster': 'Belum ada jadual tugas.',
+  'ops.assignee': 'Penerima tugasan',
+  'ops.dueDate': 'Tarikh akhir',
+  'ops.person2': 'Orang',
+  'ops.starts': 'Mula',
+  'ops.ends': 'Tamat',
+  'ops.status': 'Status untuk {title}',
 
   'fin.heading': 'Kewangan',
   'fin.disclaimer': 'Rekod disimpan untuk pengurusan dalaman organisasi anda; ini bukan perakaunan yang diperakui (ADR-003).', // REVIEW: legal wording
