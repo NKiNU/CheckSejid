@@ -95,17 +95,22 @@
 
 @layer components {
   .dialog-overlay[data-state='open'] { animation: dialog-fade 160ms var(--ease-out); }
-  .dialog-overlay[data-state='closed'] { animation: dialog-fade 120ms var(--ease-out) reverse forwards; }
+  .dialog-overlay[data-state='closed'] { animation: dialog-fade-out 120ms var(--ease-out) forwards; }
+  /* Closed has its own keyframe names: Radix Presence only waits for an exit animation whose name differs from the open one. */
   .dialog-content[data-state='open'] { animation: dialog-up 200ms var(--ease-out); }
-  .dialog-content[data-state='closed'] { animation: dialog-up 140ms var(--ease-out) reverse forwards; }
+  .dialog-content[data-state='closed'] { animation: dialog-down 140ms var(--ease-out) forwards; }
   @media (min-width: 640px) {
     .dialog-content[data-state='open'] { animation-name: dialog-pop; }
-    .dialog-content[data-state='closed'] { animation-name: dialog-pop; }
+    .dialog-content[data-state='closed'] { animation-name: dialog-pop-out; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .dialog-content[data-state] { animation-name: dialog-fade; }
+    .dialog-content[data-state='open'] { animation-name: dialog-fade; }
+    .dialog-content[data-state='closed'] { animation-name: dialog-fade-out; }
   }
 }
 @keyframes dialog-fade { from { opacity: 0; } }
+@keyframes dialog-fade-out { to { opacity: 0; } }
 @keyframes dialog-up { from { transform: translateY(100%); } }
+@keyframes dialog-down { to { transform: translateY(100%); } }
 @keyframes dialog-pop { from { opacity: 0; transform: scale(0.96); } }
+@keyframes dialog-pop-out { to { opacity: 0; transform: scale(0.96); } }
