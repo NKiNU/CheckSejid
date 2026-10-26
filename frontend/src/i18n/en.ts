@@ -130,6 +130,9 @@ export const en = {
   'disc.follow': 'Follow',
   'disc.unfollow': 'Unfollow',
   'disc.events': 'Upcoming events',
+  'disc.none': 'No organisations found.',
+  'disc.noEvents': 'No upcoming events.',
+  'disc.noPosts': 'No announcements yet.',
   'feed.heading': 'From organisations you follow',
 
   'hub.announcements': 'Announcements',

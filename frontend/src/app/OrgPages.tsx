@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label.tsx'
 import { FinancePanel } from '@/features/finance/FinancePanel.tsx'
 import { HubPanel } from '@/features/hub/HubPanel.tsx'
 import { OperationsPanel } from '@/features/operations/OperationsPanel.tsx'
-import { VisibilityPanel } from '@/features/public/PublicPanels.tsx'
+import { VisibilityPanel } from '@/features/public/VisibilityPanel.tsx'
 import { MembersPanel } from '@/features/rbac/MembersPanel.tsx'
 import { SubscriptionPanel } from '@/features/subscriptions/SubscriptionPanel.tsx'
 import { LifecyclePanel } from '@/features/tenancy/OrganisationsPanel.tsx'
@@ -25,7 +25,7 @@ function NavRows({ items }: { items: [string, string][] }) {
   return (
     <Card className="gap-0 py-0">
       {items.map(([to, label]) => (
-        <Link key={to} to={to} className="flex min-h-12 items-center justify-between gap-3 px-4 py-2 not-first:border-t not-first:border-border active:bg-muted">
+        <Link key={to} to={to} className="flex min-h-12 items-center justify-between gap-3 px-4 py-2 outline-none focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring not-first:border-t not-first:border-border active:bg-muted">
           <span className="min-w-0">{label}</span>
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         </Link>
@@ -87,13 +87,13 @@ export function OrgSettings() {
     <div className="grid gap-4 pt-6">
       <h1 className="text-2xl font-medium">{t('nav.settings')}</h1>
       <LifecyclePanel org={org} onChange={setOrg} />
-      <div className="legacy">
-        <VisibilityPanel
-          orgId={org.id}
-          visibility={org.visibility}
-          canEdit={perms.has('organisation.update') && org.status !== 'SUSPENDED' && org.status !== 'ARCHIVED'}
-        />
-      </div>
+      <VisibilityPanel
+        orgId={org.id}
+        visibility={org.visibility}
+        logoUrl={org.logoUrl}
+        coverUrl={org.coverUrl}
+        canEdit={perms.has('organisation.update') && org.status !== 'SUSPENDED' && org.status !== 'ARCHIVED'}
+      />
     </div>
   )
 }
@@ -145,7 +145,7 @@ export function MyOrganisations() {
           </Button>
         )}
       </div>
-      {!orgs && !error && <p className="text-muted-foreground">{t('common.loading')}</p>}
+      {!orgs && !error && <p role="status" className="text-muted-foreground">{t('common.loading')}</p>}
       {orgs?.length === 0 && <p className="text-muted-foreground">{t('org.none')}</p>}
       {orgs?.map((o) => (
         <Link key={o.id} to={'/org/' + o.id} className="block rounded-xl active:opacity-80">
@@ -160,7 +160,7 @@ export function MyOrganisations() {
           </Card>
         </Link>
       ))}
-      {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && !orgs && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <FormDialog open={open} onOpenChange={setOpen} title={t('org.create')} submitLabel={t('org.create')} onSubmit={create} error={error}>
         <Label htmlFor="org-name">{t('org.newName')}</Label>
         <Input id="org-name" name="name" className="h-11" required maxLength={200} />

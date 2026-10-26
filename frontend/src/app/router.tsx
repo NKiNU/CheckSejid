@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router'
 import { useT } from '@/i18n/index.tsx'
-import { DiscoverPanel, FeedPanel } from '@/features/public/PublicPanels.tsx'
+import { DiscoverPanel } from '@/features/public/DiscoverPanel.tsx'
+import { FeedPanel } from '@/features/public/FeedPanel.tsx'
 import { IslamicPanel } from '@/features/islamic/IslamicPanel.tsx'
 import { NotificationsPanel } from '@/features/notifications/NotificationsPanel.tsx'
 import { AuthPage } from './AuthPage.tsx'
@@ -57,17 +58,17 @@ export const router = createBrowserRouter([
     children: [
       {
         path: '/',
-        element: legacy(
+        element: (
           <>
             <DiscoverPanel />
-            <div id="prayer" className="scroll-mt-20"><IslamicPanel /></div>
-          </>,
+            {legacy(<div id="prayer" className="scroll-mt-20"><IslamicPanel /></div>)}
+          </>
         ),
       },
       {
         element: <RequireAuth />,
         children: [
-          { path: '/feed', element: <><MyOrganisations />{legacy(<FeedPanel />)}</> },
+          { path: '/feed', element: <><MyOrganisations /><FeedPanel /></> },
           { path: '/notifications', element: legacy(<NotificationsPanel />) },
         ],
       },

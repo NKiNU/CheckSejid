@@ -131,6 +131,9 @@ export const ms: Record<Key, string> = {
   'disc.follow': 'Ikuti',
   'disc.unfollow': 'Henti ikuti',
   'disc.events': 'Acara akan datang',
+  'disc.none': 'Tiada organisasi dijumpai.',
+  'disc.noEvents': 'Tiada acara akan datang.',
+  'disc.noPosts': 'Belum ada pengumuman.',
   'feed.heading': 'Daripada organisasi yang anda ikuti',
 
   'hub.announcements': 'Pengumuman',
