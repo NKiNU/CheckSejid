@@ -60,18 +60,19 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             {register && (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="displayName">{t('auth.name')}</Label>
-                <Input id="displayName" name="displayName" required maxLength={100} autoComplete="name" />
+                <Input id="displayName" name="displayName" className="h-11" required maxLength={100} autoComplete="name" />
               </div>
             )}
             <div className="flex flex-col gap-2">
               <Label htmlFor="email">{t('auth.email')}</Label>
-              <Input id="email" name="email" type="email" required autoComplete="email" />
+              <Input id="email" name="email" type="email" className="h-11" required autoComplete="email" />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="password">{t('auth.password')}</Label>
               <Input
                 id="password"
                 name="password"
+                className="h-11"
                 type="password"
                 required
                 minLength={register ? 12 : 1}
@@ -84,13 +85,13 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
                 {error}
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="h-11 w-full" disabled={submitting}>
               {register ? t('auth.register') : t('auth.logIn')}
             </Button>
           </form>
         </CardContent>
       </Card>
-      <Link to={other} className="text-center text-sm underline">
+      <Link to={other} className="inline-flex min-h-11 items-center justify-center text-sm underline">
         {register ? t('auth.haveAccount') : t('auth.needAccount')}
       </Link>
     </main>
