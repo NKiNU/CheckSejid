@@ -4,6 +4,7 @@ import { useT } from '@/i18n/index.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'
 import { myPermissions } from '@/features/rbac/api.ts'
 import { getOrganisation, listMyOrganisations, type Organisation } from '@/features/tenancy/api.ts'
+import { Select } from '@/components/ui/select.tsx'
 import { Shell } from './Shell.tsx'
 import { orgTabs } from './tabs.ts'
 
@@ -19,9 +20,9 @@ function OrgSwitcher({ current }: { current: Organisation }) {
   }, [])
   const list = orgs.some((o) => o.id === current.id) ? orgs : [current, ...orgs]
   return (
-    <select
+    <Select
       aria-label={t('org.current')}
-      className="max-w-[60vw] truncate rounded-md border border-border bg-background px-2 py-2 text-base lg:max-w-full"
+      className="max-w-[60vw] truncate bg-background lg:max-w-full"
       value={current.id}
       onChange={(e) => navigate(e.target.value === '/feed' ? '/feed' : '/org/' + e.target.value)}
     >
@@ -29,7 +30,7 @@ function OrgSwitcher({ current }: { current: Organisation }) {
         <option key={o.id} value={o.id}>{o.name}</option>
       ))}
       <option value="/feed">{t('nav.community')}</option>
-    </select>
+    </Select>
   )
 }
 
@@ -56,6 +57,7 @@ export function OrgLayout() {
       <div className="mx-auto max-w-md p-4 pt-12">
         <Card>
           <CardContent className="grid gap-3 pt-6">
+            <h1 className="text-xl font-semibold">{t('app.name')}</h1>
             <p role="alert" className="text-destructive">{errorText(state.error)}</p>
             <Link to="/feed" className="inline-flex min-h-11 items-center text-primary underline">{t('common.back')}</Link>
           </CardContent>

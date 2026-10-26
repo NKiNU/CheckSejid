@@ -27,7 +27,7 @@ export function Shell({ tabs, title, context }: { tabs: Tab[]; title: ReactNode;
           <LogOut className="size-5" aria-hidden />
         </button>
       ) : (
-        <Link to="/login" className="px-2 text-sm text-primary underline">{t('auth.logIn')}</Link>
+        <Link to="/login" className="inline-flex min-h-11 items-center px-2 text-sm text-primary underline">{t('auth.logIn')}</Link>
       )}
     </>
   )
