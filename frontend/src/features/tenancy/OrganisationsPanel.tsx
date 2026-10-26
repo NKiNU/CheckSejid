@@ -3,7 +3,7 @@ import { useT } from '../../i18n/index.tsx'
 import { ConfirmDialog } from '@/components/ConfirmDialog.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { Card, CardContent, CardHeader } from '@/components/ui/card.tsx'
 import { Input } from '@/components/ui/input.tsx'
 import { Label } from '@/components/ui/label.tsx'
 import { Select } from '@/components/ui/select.tsx'
@@ -59,13 +59,13 @@ export function LifecyclePanel({ org, onChange }: { org: api.Organisation; onCha
       {onboarding && perms.has('organisation.update') && (
         <Card>
           <CardHeader>
-            <CardTitle>{t('org.profile')}</CardTitle>
+            <h2 className="text-base font-medium">{t('org.profile')}</h2>
           </CardHeader>
           <CardContent>
             <form onSubmit={save} className="grid gap-4">
-              <Label className={field}>
-                {t('org.type')}
-                <Select name="type" defaultValue={org.type ?? ''}>
+              <div className={field}>
+                <Label htmlFor="org-type">{t('org.type')}</Label>
+                <Select id="org-type" name="type" defaultValue={org.type ?? ''}>
                   <option value="">{t('common.choose')}</option>
                   {api.ORG_TYPES.map((ty) => (
                     <option key={ty} value={ty}>
@@ -73,31 +73,31 @@ export function LifecyclePanel({ org, onChange }: { org: api.Organisation; onCha
                     </option>
                   ))}
                 </Select>
-              </Label>
-              <Label className={field}>
-                {t('common.description')}
-                <Textarea name="description" maxLength={2000} defaultValue={org.description ?? ''} />
-              </Label>
-              <Label className={field}>
-                {t('org.contactEmail')}
-                <Input className="h-11" name="contactEmail" type="email" maxLength={254} defaultValue={org.contactEmail ?? ''} />
-              </Label>
-              <Label className={field}>
-                {t('org.contactPhone')}
-                <Input className="h-11" name="contactPhone" maxLength={30} defaultValue={org.contactPhone ?? ''} />
-              </Label>
-              <Label className={field}>
-                {t('org.address')}
-                <Input className="h-11" name="addressLine" maxLength={300} defaultValue={org.addressLine ?? ''} />
-              </Label>
-              <Label className={field}>
-                {t('org.state')}
-                <Input className="h-11" name="state" maxLength={100} defaultValue={org.state ?? ''} />
-              </Label>
-              <Label className={field}>
-                {t('org.country')}
-                <Input className="h-11" name="country" maxLength={2} pattern="[A-Za-z]{2}" defaultValue={org.country ?? ''} />
-              </Label>
+              </div>
+              <div className={field}>
+                <Label htmlFor="org-description">{t('common.description')}</Label>
+                <Textarea id="org-description" name="description" maxLength={2000} defaultValue={org.description ?? ''} />
+              </div>
+              <div className={field}>
+                <Label htmlFor="org-contactEmail">{t('org.contactEmail')}</Label>
+                <Input id="org-contactEmail" className="h-11" name="contactEmail" type="email" maxLength={254} defaultValue={org.contactEmail ?? ''} />
+              </div>
+              <div className={field}>
+                <Label htmlFor="org-contactPhone">{t('org.contactPhone')}</Label>
+                <Input id="org-contactPhone" className="h-11" name="contactPhone" maxLength={30} defaultValue={org.contactPhone ?? ''} />
+              </div>
+              <div className={field}>
+                <Label htmlFor="org-addressLine">{t('org.address')}</Label>
+                <Input id="org-addressLine" className="h-11" name="addressLine" maxLength={300} defaultValue={org.addressLine ?? ''} />
+              </div>
+              <div className={field}>
+                <Label htmlFor="org-state">{t('org.state')}</Label>
+                <Input id="org-state" className="h-11" name="state" maxLength={100} defaultValue={org.state ?? ''} />
+              </div>
+              <div className={field}>
+                <Label htmlFor="org-country">{t('org.country')}</Label>
+                <Input id="org-country" className="h-11" name="country" maxLength={2} pattern="[A-Za-z]{2}" defaultValue={org.country ?? ''} />
+              </div>
               <Button type="submit" className="h-11">{t('org.saveProfile')}</Button>
               {org.status === 'ONBOARDING' && (
                 <Button type="button" variant="outline" className="h-11" onClick={() => run(() => api.completeOnboarding(org.id))}>
@@ -110,7 +110,7 @@ export function LifecyclePanel({ org, onChange }: { org: api.Organisation; onCha
       )}
       <Card>
         <CardHeader>
-          <CardTitle>{t('org.status')}</CardTitle>
+          <h2 className="text-base font-medium">{t('org.status')}</h2>
         </CardHeader>
         <CardContent>
           <Badge variant={orgStatusVariant(org.status)}>{t(`state.${org.status}`)}</Badge>
@@ -119,9 +119,9 @@ export function LifecyclePanel({ org, onChange }: { org: api.Organisation; onCha
               {t('org.archive')}
             </Button>
           )}
-          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         </CardContent>
       </Card>
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <ConfirmDialog
         open={confirmArchive}
         onOpenChange={setConfirmArchive}

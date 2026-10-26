@@ -25,6 +25,7 @@ export function ConfirmDialog({ open, onOpenChange, title, body, confirmLabel, d
             variant={destructive ? 'destructive' : 'default'}
             className="h-11 px-4"
             onClick={() => {
+              if (!open) return
               onConfirm()
               onOpenChange(false)
             }}
