@@ -143,6 +143,8 @@ export const ms: Record<Key, string> = {
   'hub.ends': 'Tamat',
   'hub.location': 'Lokasi (pilihan)',
   'hub.deleteDraft': 'Padam draf',
+  'hub.deleteTitle': 'Padam draf ini?',
+  'hub.deleteBody': 'Draf akan dipadam secara kekal.',
   'hub.newPost': 'Pengumuman baharu',
   'hub.newEvent': 'Acara baharu',
   'hub.noPosts': 'Belum ada pengumuman.',

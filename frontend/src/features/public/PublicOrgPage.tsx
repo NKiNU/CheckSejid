@@ -39,7 +39,7 @@ export function PublicOrgPage({ id }: { id: string }) {
 
   const contact = [[org.addressLine, org.state, org.country].filter(Boolean).join(', '), org.contactPhone, org.contactEmail].filter(Boolean)
   return (
-    <article ref={ref} className="grid scroll-mt-4 gap-4">
+    <article ref={ref} className="grid scroll-mt-[calc(3.5rem+env(safe-area-inset-top))] gap-4 lg:scroll-mt-4">
       <Card className="gap-0 py-0">
         {org.coverUrl ? <img src={org.coverUrl} alt="" className="h-36 w-full object-cover sm:h-48" /> : <div className="h-16 bg-muted" aria-hidden />}
         <CardContent className="gap-3 py-4">

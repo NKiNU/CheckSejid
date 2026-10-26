@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useT } from '../../i18n/index.tsx'
+import { ConfirmDialog } from '@/components/ConfirmDialog.tsx'
 import { FormDialog } from '@/components/FormDialog.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -8,7 +9,7 @@ import { Input } from '@/components/ui/input.tsx'
 import { Label } from '@/components/ui/label.tsx'
 import { Textarea } from '@/components/ui/textarea.tsx'
 import * as api from './api.ts'
-import { contentStatusVariant } from './status.ts'
+import { contentStatusVariant, needsClamp } from './status.ts'
 
 // Phase 06: bulletin posts and events with their lifecycle. Controls follow the caller's keys; the
 // server enforces them (AUTH-003).
@@ -19,12 +20,14 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
   const [error, setError] = useState<string | null>(null)
   const [dialog, setDialog] = useState<api.Kind | null>(null)
   const [open, setOpen] = useState(false) // separate from `dialog` so the form stays put during the close animation
+  const [del, setDel] = useState<{ kind: api.Kind; id: string } | null>(null)
+  const [delOpen, setDelOpen] = useState(false) // same trick: keep `del` while the confirm animates out
   const show = (k: api.Kind) => (setError(null), setDialog(k), setOpen(true))
 
   const load = () =>
     Promise.all([api.listPosts(orgId), api.listEvents(orgId)]).then(
       ([p, e]) => (setPosts(p), setEvents(e)),
-      (e) => (setPosts((p) => p ?? []), setEvents((v) => v ?? []), setError(errorText(e))),
+      (e) => setError(errorText(e)),
     )
   useEffect(() => {
     load()
@@ -76,7 +79,7 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
           </Button>
         ))}
         {del && (
-          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => run(() => api.removeDraft(orgId, kind, item.id))}>
+          <Button type="button" variant="outline" className="h-11 px-4" onClick={() => (setDel({ kind, id: item.id }), setDelOpen(true))}>
             {t('hub.deleteDraft')}
           </Button>
         )}
@@ -94,7 +97,7 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
           <CardContent className="gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={contentStatusVariant(item.status)}>{t(`state.${item.status}`)}</Badge>
-              <Badge>{dateTime(when)}</Badge>
+              <Badge>{ev && `${t('hub.starts')} `}{dateTime(when)}</Badge>
             </div>
             <h3 className="min-w-0 text-base font-medium [overflow-wrap:anywhere]">{item.title}</h3>
             {ev && (
@@ -131,12 +134,21 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
   return (
     <div className="grid gap-6 pt-6">
       <h1 className="text-2xl font-medium">{t('nav.hub')}</h1>
+      {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {section('post', t('hub.announcements'), posts, t('hub.noPosts'), perms.has('bulletin.manage'), t('hub.newPost'))}
       {section('event', t('hub.events'), events, t('hub.noEvents'), perms.has('event.manage'), t('hub.newEvent'))}
-      {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      <ConfirmDialog
+        open={delOpen}
+        onOpenChange={setDelOpen}
+        title={t('hub.deleteTitle')}
+        body={t('hub.deleteBody')}
+        confirmLabel={t('hub.deleteDraft')}
+        destructive
+        onConfirm={() => del && run(() => api.removeDraft(orgId, del.kind, del.id))}
+      />
       <FormDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={(o) => (setOpen(o), o || setError(null))}
         title={dialog === 'event' ? t('hub.newEvent') : t('hub.newPost')}
         submitLabel={t('common.saveDraft')}
         onSubmit={dialog === 'event' ? addEvent : addPost}
@@ -186,11 +198,10 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
 function Clamp({ text }: { text: string }) {
   const { t } = useT()
   const [more, setMore] = useState(false)
-  const long = text.length > 100 || text.split('\n').length > 3
   return (
     <div className="grid justify-items-start gap-1">
       <p className={`whitespace-pre-line text-sm [overflow-wrap:anywhere] ${more ? '' : 'line-clamp-3'}`}>{text}</p>
-      {long && (
+      {needsClamp(text) && (
         <Button type="button" variant="link" aria-expanded={more} className="h-11 px-0" onClick={() => setMore(!more)}>
           {more ? t('hub.less') : t('hub.more')}
         </Button>

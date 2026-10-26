@@ -142,6 +142,8 @@ export const en = {
   'hub.ends': 'Ends',
   'hub.location': 'Location (optional)',
   'hub.deleteDraft': 'Delete draft',
+  'hub.deleteTitle': 'Delete this draft?',
+  'hub.deleteBody': 'The draft is removed permanently.',
   'hub.newPost': 'New announcement',
   'hub.newEvent': 'New event',
   'hub.noPosts': 'No announcements yet.',
