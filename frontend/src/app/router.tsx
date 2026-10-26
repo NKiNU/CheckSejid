@@ -42,7 +42,7 @@ export const router = createBrowserRouter([
         element: <OrgLayout />,
         children: [
           { index: true, element: <OrgHome /> },
-          { path: 'hub', element: legacy(<OrgHub />) },
+          { path: 'hub', element: <OrgHub /> },
           { path: 'finance', element: legacy(<OrgFinance />) },
           { path: 'operations', element: legacy(<OrgOperations />) },
           { path: 'members', element: <OrgMembers /> },
