@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router'
 import { useT } from '@/i18n/index.tsx'
 import { DiscoverPanel } from '@/features/public/DiscoverPanel.tsx'
@@ -28,9 +27,6 @@ function CommunityShell() {
   return <Shell tabs={communityTabs(status === 'in')} title={t('app.name')} />
 }
 
-// Unmigrated screens keep the old bare-element styling until their task (redesign plan) removes the wrapper.
-const legacy = (el: ReactNode) => <div className="legacy">{el}</div>
-
 export const router = createBrowserRouter([
   { path: '/login', element: <AuthPage mode="login" /> },
   { path: '/register', element: <AuthPage mode="register" /> },
@@ -48,7 +44,7 @@ export const router = createBrowserRouter([
           { path: 'members', element: <OrgMembers /> },
           { path: 'settings', element: <OrgSettings /> },
           { path: 'more', element: <OrgMore /> },
-          { path: '*', element: legacy(<NotFound />) },
+          { path: '*', element: <NotFound /> },
         ],
       },
     ],
@@ -72,7 +68,7 @@ export const router = createBrowserRouter([
           { path: '/notifications', element: <NotificationsPanel /> },
         ],
       },
-      { path: '*', element: legacy(<NotFound />) },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ])

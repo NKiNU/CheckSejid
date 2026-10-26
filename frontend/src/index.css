@@ -83,17 +83,6 @@
 }
 
 @layer components {
-  .legacy h2 { @apply text-xl font-semibold mt-6 mb-3; }
-  .legacy h3 { @apply text-lg font-medium mt-4 mb-2; }
-  .legacy label { @apply block mb-3; }
-  .legacy :is(input, select, textarea) { @apply w-full max-w-md rounded-md border border-border bg-card px-3 py-2; }
-  .legacy button { @apply rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50; }
-  .legacy ul { @apply space-y-2; }
-  .legacy [role='alert'] { @apply text-destructive; }
-  .legacy section { @apply mb-4 rounded-xl bg-card p-4 shadow-sm; }
-}
-
-@layer components {
   .dialog-overlay[data-state='open'] { animation: dialog-fade 160ms var(--ease-out); }
   .dialog-overlay[data-state='closed'] { animation: dialog-fade-out 120ms var(--ease-out) forwards; }
   /* Closed has its own keyframe names: Radix Presence only waits for an exit animation whose name differs from the open one. */
