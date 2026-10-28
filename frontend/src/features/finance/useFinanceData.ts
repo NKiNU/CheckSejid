@@ -15,7 +15,7 @@ export function useFinanceData(orgId: string, kind: api.Kind) {
   // Drops the result when it is no longer wanted (kind switched or unmounted), so a slow response cannot overwrite a newer list.
   const fetchAll = (k: api.Kind, live: () => boolean) =>
     Promise.all([api.listRecords(orgId, k), api.listCategories(orgId), api.listCollections(orgId)]).then(
-      ([r, c, col]) => live() && (setRecords(r), setCategories(c), setCollections(col)),
+      ([r, c, col]) => live() && (setRecords(r), setCategories(c), setCollections(col), setError(null)),
       (e) => live() && setError(errorText(e)),
     )
   const load = () => fetchAll(kind, () => kindRef.current === kind)

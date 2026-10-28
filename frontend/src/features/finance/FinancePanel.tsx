@@ -19,7 +19,9 @@ const CONFIRM: Partial<Record<api.Action, 'fin.confirmReject' | 'fin.confirmVoid
 export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUserId: string; perms: ReadonlySet<string> }) {
   const { t, error: errorText } = useT()
   const [kind, setKind] = useState<api.Kind>('expense')
-  const { records, setRecords, categories, collections, error, setError, load } = useFinanceData(orgId, kind)
+  const { records, setRecords, categories, collections, error: loadError, setError: setLoadError, load } = useFinanceData(orgId, kind)
+  const [error, setError] = useState<string | null>(null) // action/dialog errors; load errors stay in loadError
+  const [busyId, setBusyId] = useState<string | null>(null) // record with a row action in flight
   const [dlg, setDlg] = useState<Dlg>('tx')
   const [open, setOpen] = useState(false) // separate from `dlg`/`pend` so content stays put during the close animation
   const [pend, setPend] = useState<Pending | null>(null)
@@ -41,7 +43,9 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
   const doAction = (r: api.FinanceRecord, a: api.Action) => {
     if (api.needsReason(a)) return setPend({ r, a }), show('reason')
     if (CONFIRM[a]) return setPend({ r, a }), setConfOpen(true)
-    run(() => api.act(orgId, kind, r.id, a))
+    if (busyId) return
+    setBusyId(r.id)
+    run(() => api.act(orgId, kind, r.id, a)).finally(() => setBusyId(null))
   }
   async function sendReason(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -106,7 +110,7 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
               variant={k === kind ? 'default' : 'outline'}
               aria-pressed={k === kind}
               className="h-auto min-h-11 min-w-0 whitespace-normal px-1 text-xs leading-tight sm:px-2 sm:text-sm"
-              onClick={() => k !== kind && (setRecords(null), setError(null), setKind(k))}
+              onClick={() => k !== kind && (setRecords(null), setError(null), setLoadError(null), setKind(k))}
             >
               {t(`fin.kind.${k}`)}
             </Button>
@@ -126,8 +130,8 @@ export function FinancePanel({ orgId, myUserId, perms }: { orgId: string; myUser
             )}
           </div>
         )}
-        {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
-        <FinanceList kind={kind} records={records} categories={categories} myUserId={myUserId} perms={perms} failed={!!error} onAction={doAction} onAttach={attach} />
+        {(loadError ?? (!open && error)) && <p role="alert" className="text-sm text-destructive">{loadError ?? error}</p>}
+        <FinanceList kind={kind} records={records} categories={categories} myUserId={myUserId} perms={perms} failed={!!loadError} busy={!!busyId} onAction={doAction} onAttach={attach} />
       </div>
 
       <section className="grid gap-3">

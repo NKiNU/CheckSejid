@@ -19,7 +19,8 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
   const [tasks, setTasks] = useState<api.Task[] | null>(null)
   const [roster, setRoster] = useState<api.RosterEntry[] | null>(null)
   const [members, setMembers] = useState<Member[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // action/dialog errors
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [dialog, setDialog] = useState<Kind>('task')
   const [open, setOpen] = useState(false) // separate from `dialog` so the form stays put during the close animation
   const manage = perms.has('operations.manage')
@@ -27,8 +28,8 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
 
   const load = () =>
     Promise.all([api.listTasks(orgId), api.listRoster(orgId), listMembers(orgId)]).then(
-      ([tk, r, m]) => (setTasks(tk), setRoster(r), setMembers(m)),
-      (e) => setError(errorText(e)),
+      ([tk, r, m]) => (setTasks(tk), setRoster(r), setMembers(m), setLoadError(null)),
+      (e) => setLoadError(errorText(e)),
     )
   useEffect(() => {
     load()
@@ -85,7 +86,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
 
       <section className="grid gap-3">
         {head(t('ops.tasks'), 'task', t('ops.newTask'))}
-        {!tasks && !error && loading}
+        {!tasks && !loadError && loading}
         {tasks?.length === 0 && <p className="text-muted-foreground">{t('ops.noTasks')}</p>}
         {tasks && tasks.length > 0 && (
           <ul className="grid gap-3 lg:grid-cols-2">
@@ -126,7 +127,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
 
       <section className="grid gap-3">
         {head(t('ops.roster'), 'roster', t('ops.newRoster'))}
-        {!roster && !error && loading}
+        {!roster && !loadError && loading}
         {roster?.length === 0 && <p className="text-muted-foreground">{t('ops.noRoster')}</p>}
         {roster &&
           groupByDay(roster, (r) => r.startsAt).map((g) => (
@@ -155,7 +156,7 @@ export function OperationsPanel({ orgId, myUserId, perms }: { orgId: string; myU
           ))}
       </section>
 
-      {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {(loadError || (!open && error)) && <p role="alert" className="text-sm text-destructive">{loadError || error}</p>}
       <FormDialog
         open={open}
         onOpenChange={(o) => (setOpen(o), o || setError(null))}

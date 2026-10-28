@@ -17,7 +17,9 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
   const { t, error: errorText, dateTime } = useT()
   const [posts, setPosts] = useState<api.Post[] | null>(null)
   const [events, setEvents] = useState<api.HubEvent[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null) // action/dialog errors
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null) // item with a publish/archive in flight
   const [dialog, setDialog] = useState<api.Kind | null>(null)
   const [open, setOpen] = useState(false) // separate from `dialog` so the form stays put during the close animation
   const [del, setDel] = useState<{ kind: api.Kind; id: string } | null>(null)
@@ -26,8 +28,8 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
 
   const load = () =>
     Promise.all([api.listPosts(orgId), api.listEvents(orgId)]).then(
-      ([p, e]) => (setPosts(p), setEvents(e)),
-      (e) => setError(errorText(e)),
+      ([p, e]) => (setPosts(p), setEvents(e), setLoadError(null)),
+      (e) => setLoadError(errorText(e)),
     )
   useEffect(() => {
     load()
@@ -74,7 +76,7 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
     return (
       <div className="flex flex-wrap gap-2">
         {publish.map((a) => (
-          <Button key={a} type="button" variant="outline" className="h-11 px-4" onClick={() => run(() => api.transition(orgId, kind, item.id, a))}>
+          <Button key={a} type="button" variant="outline" className="h-11 px-4" disabled={!!busyId} onClick={() => (setBusyId(item.id), run(() => api.transition(orgId, kind, item.id, a)).finally(() => setBusyId(null)))}>
             {item.status === 'ARCHIVED' ? t('action.republish') : t(`action.${a}`)}
           </Button>
         ))}
@@ -124,7 +126,7 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
           </Button>
         )}
       </div>
-      {!items && !error && <p role="status" className="text-muted-foreground">{t('common.loading')}</p>}
+      {!items && !loadError && <p role="status" className="text-muted-foreground">{t('common.loading')}</p>}
       {items?.length === 0 && <p className="text-muted-foreground">{empty}</p>}
       {items && items.length > 0 && <ul className="grid gap-3 lg:grid-cols-2">{(items as (api.Post | api.HubEvent)[]).map((i) => card(kind, i))}</ul>}
     </section>
@@ -134,7 +136,7 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
   return (
     <div className="grid gap-6 pt-6">
       <h1 className="text-2xl font-medium">{t('nav.hub')}</h1>
-      {error && !open && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {(loadError || (!open && error)) && <p role="alert" className="text-sm text-destructive">{loadError || error}</p>}
       {section('post', t('hub.announcements'), posts, t('hub.noPosts'), perms.has('bulletin.manage'), t('hub.newPost'))}
       {section('event', t('hub.events'), events, t('hub.noEvents'), perms.has('event.manage'), t('hub.newEvent'))}
       <ConfirmDialog

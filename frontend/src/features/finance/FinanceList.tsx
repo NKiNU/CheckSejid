@@ -12,11 +12,12 @@ type Props = {
   myUserId: string
   perms: ReadonlySet<string>
   failed: boolean
+  busy: boolean
   onAction: (r: api.FinanceRecord, a: api.Action) => void
   onAttach: (r: api.FinanceRecord, file: File) => void
 }
 
-export function FinanceList({ kind, records, categories, myUserId, perms, failed, onAction, onAttach }: Props) {
+export function FinanceList({ kind, records, categories, myUserId, perms, failed, busy, onAction, onAttach }: Props) {
   const { t, locale } = useT()
   if (!records) return failed ? null : <p role="status" className="text-muted-foreground">{t('common.loading')}</p>
   if (records.length === 0) return <p className="text-muted-foreground">{t('fin.empty')}</p>
@@ -47,7 +48,7 @@ export function FinanceList({ kind, records, categories, myUserId, perms, failed
                 {actions.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {actions.map((a) => (
-                      <Button key={a} type="button" variant="outline" className="h-11 px-4" onClick={() => onAction(r, a)}>
+                      <Button key={a} type="button" variant="outline" className="h-11 px-4" disabled={busy} onClick={() => onAction(r, a)}>
                         {t(`action.${a}`)}
                       </Button>
                     ))}
