@@ -13,8 +13,8 @@ describe("ADR-015 catalogue and matrix", () => {
     for (const k of PERMISSIONS) expect(ADR, k).toContain(`| \`${k}\` |`);
   });
 
-  it("RBAC-007: exactly the 4 platform keys of ADR-015 §5, none of them held by a tenant role (RBAC-006/012)", () => {
-    expect(PLATFORM_PERMISSIONS).toHaveLength(4);
+  it("RBAC-007: exactly the 5 platform keys of ADR-015 §5, none of them held by a tenant role (RBAC-006/012)", () => {
+    expect(PLATFORM_PERMISSIONS).toHaveLength(5);
     for (const k of PLATFORM_PERMISSIONS) expect(ADR, k).toContain(`| \`${k}\` |`);
     const tenantHeld = new Set(ROLES.flatMap((r) => [...ROLE_PERMISSIONS[r]]));
     for (const k of PLATFORM_PERMISSIONS) expect(tenantHeld.has(k as never), k).toBe(false);

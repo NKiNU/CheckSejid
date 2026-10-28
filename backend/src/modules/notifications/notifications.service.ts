@@ -13,7 +13,11 @@ export type NotificationType =
   | "event.published"
   | "subscription.changed"
   | "erasure.requested"
-  | "erasure.cancelled";
+  | "erasure.cancelled"
+  // ADR-032: sent to the organisation owner only, by support.service (not by notify())
+  | "support.requested"
+  | "support.started"
+  | "support.ended";
 
 export type NotificationEvent = {
   organisationId: string;
