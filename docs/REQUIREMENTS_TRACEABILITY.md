@@ -182,7 +182,7 @@ Rules:
 
 - Part 1 (foundation: Tailwind, shadcn/ui kit, react-router, mobile-first shell) is done.
 - Part 2 (screens redesign) is done on `feature/frontend-screens`: identity/auth, tenancy, rbac (members), public (discover, feed, visibility), hub, operations, finance, islamic, notifications, subscriptions. The `.legacy` base style is removed. Plan: `superpowers/plans/2026-10-26-frontend-screens-redesign.md`.
-- Part 3 (password change) is next.
+- Part 3 (password change) is done on `feature/frontend-screens`: `/account/password`, reached from the key icon in the shell; the server returns a new session, so there is no forced re-login (ADR-009, AUTH-007). Plan: `superpowers/plans/2026-10-28-password-change-screen.md`.
 - Deviations recorded in this branch:
   - Members keep role checkboxes (the API takes a multi-role array), not a Select.
   - Finance client-side totals are removed pending a server aggregate endpoint (ADR-022); product-owner decision.
