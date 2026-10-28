@@ -50,6 +50,7 @@ model Task {
 
   @@index([organisationId, status])
   @@index([organisationId, assigneeUserId])
+  @@index([programmeId, organisationId])
 }
 
 model RosterEntry {
@@ -69,4 +70,5 @@ model RosterEntry {
   updatedAt      DateTime     @updatedAt
 
   @@index([organisationId, startsAt])
+  @@index([programmeId, organisationId])
 }

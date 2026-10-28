@@ -95,6 +95,7 @@ model Income {
 
   @@index([organisationId, state])
   @@index([organisationId, collectionId, state])
+  @@index([categoryId, organisationId])
 }
 
 model Expense {
@@ -157,6 +158,7 @@ model Budget {
   updatedAt         DateTime          @updatedAt
 
   @@index([organisationId, state])
+  @@index([categoryId, organisationId])
 }
 
 // FIN-012 / ADR-013: one row per approval decision. recordId is polymorphic (no FK).

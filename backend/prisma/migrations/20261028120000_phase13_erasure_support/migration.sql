@@ -60,6 +60,18 @@ CREATE TABLE "SupportAccessGrant" (
 );
 
 -- CreateIndex
+CREATE INDEX "Budget_categoryId_organisationId_idx" ON "Budget"("categoryId", "organisationId");
+
+-- CreateIndex
+CREATE INDEX "Income_categoryId_organisationId_idx" ON "Income"("categoryId", "organisationId");
+
+-- CreateIndex
+CREATE INDEX "RosterEntry_programmeId_organisationId_idx" ON "RosterEntry"("programmeId", "organisationId");
+
+-- CreateIndex
+CREATE INDEX "Task_programmeId_organisationId_idx" ON "Task"("programmeId", "organisationId");
+
+-- CreateIndex
 CREATE INDEX "ErasureRequest_status_executeAfter_idx" ON "ErasureRequest"("status", "executeAfter");
 
 -- CreateIndex
@@ -78,15 +90,14 @@ CREATE INDEX "SupportAccessGrant_organisationId_createdAt_idx" ON "SupportAccess
 CREATE INDEX "SupportAccessGrant_adminUserId_organisationId_status_idx" ON "SupportAccessGrant"("adminUserId", "organisationId", "status");
 
 
--- Phase 13A (ADR-031). Hand-written; merged into the single Phase 13 migration at merge time, after the
--- tables Prisma generates from erasure.prisma. Safe to run once on a database that has all earlier migrations.
+-- Phase 13A (ADR-031), hand-written part.
 
 -- ADR-031 §1: the tenant audit trail stays append-only (FIN-015) except inside an organisation erasure,
--- whose transaction runs SET LOCAL app.erasure = 'on'. SET LOCAL ends with the transaction, so no
--- other session or later statement can delete. UPDATE stays blocked always.
+-- whose transaction runs SET LOCAL app.erasure = '<organisationId>' and so can delete only that
+-- organisation's rows. SET LOCAL ends with the transaction. UPDATE stays blocked always.
 CREATE OR REPLACE FUNCTION "audit_log_append_only"() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  IF TG_OP = 'DELETE' AND current_setting('app.erasure', true) = 'on' THEN
+  IF TG_OP = 'DELETE' AND OLD."organisationId"::text = current_setting('app.erasure', true) THEN
     RETURN OLD;
   END IF;
   RAISE EXCEPTION 'AuditLog is append-only' USING ERRCODE = 'insufficient_privilege';
