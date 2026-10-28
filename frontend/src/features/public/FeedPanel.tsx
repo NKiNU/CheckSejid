@@ -23,11 +23,11 @@ export function FeedPanel() {
     </li>
   )
   return (
-    <section className="grid gap-3 pb-6">
+    <section className="grid gap-3 pt-6 pb-6">
       <h2 className="text-base font-medium">{t('feed.heading')}</h2>
       <ul className="grid gap-3">
         {feed.events.map((e) => row(e.id, e.organisation.name, e.title, e.startsAt))}
-        {feed.posts.map((p) => row(p.id, p.organisation.name, p.title))}
+        {feed.posts.map((p) => row(p.id, p.organisation.name, p.title, p.publishedAt ?? undefined))}
       </ul>
     </section>
   )

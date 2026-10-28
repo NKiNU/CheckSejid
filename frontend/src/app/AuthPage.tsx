@@ -45,7 +45,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-4 py-8">
       <div className="flex items-center justify-between">
-        <Link to="/" className="inline-flex min-h-11 items-center text-sm underline">
+        <Link to="/" className="inline-flex min-h-11 min-w-11 items-center text-sm underline">
           {t('common.back')}
         </Link>
         <LanguageSwitch />
