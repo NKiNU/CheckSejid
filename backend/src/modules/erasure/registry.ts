@@ -18,6 +18,7 @@ export const registry = [
   "MembershipRole",
   "OrganisationMembership",
   "AuditLog",
+  "SupportAccessGrant", // Phase 13B (ADR-032)
   "Subscription",
   "RetentionSetting",
 ] as const;

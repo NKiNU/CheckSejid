@@ -37,10 +37,11 @@ const auditGrant = (tx: Tx, actor: string, action: string, g: SupportAccessGrant
   platformAudit(tx, { actorUserId: actor, action, targetUserId: g.adminUserId, targetOrganisationId: g.organisationId, reason: g.reason, details });
 
 export async function requestAccess(adminUserId: string, organisationId: string, reason: string) {
+  await endExpired(new Date(), organisationId); // an expired-but-stored grant must not block a new request (SupportAccessGrant_open_request)
   return prisma.$transaction(async (tx) => {
     if (!(await tx.organisation.findUnique({ where: { id: organisationId }, select: { id: true } }))) throw orgNotFound();
-    const open = await tx.supportAccessGrant.count({ where: { organisationId, adminUserId, status: "REQUESTED" } });
-    if (open > 0) throw new HttpError(409, "REQUEST_ALREADY_OPEN", "You already have an open request for this organisation");
+    const open = await tx.supportAccessGrant.count({ where: { organisationId, adminUserId, status: { in: ["REQUESTED", "GRANTED"] } } });
+    if (open > 0) throw new HttpError(409, "REQUEST_ALREADY_OPEN", "You already have an open request or active access for this organisation");
     const g = await tx.supportAccessGrant.create({ data: { organisationId, adminUserId, reason } });
     await auditGrant(tx, adminUserId, "support.request", g);
     await tellOwner(tx, g, "support.requested", "Support access requested");
