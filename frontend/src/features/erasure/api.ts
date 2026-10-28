@@ -16,7 +16,7 @@ export const MY_ERASURE = '/me/erasure'
 export const current = (path: string) => send<One>('GET', path).then((r) => r.request)
 export const request = (path: string, password: string) => send<One>('POST', path, { password }).then((r) => r.request!)
 export const cancel = (path: string) => send<One>('DELETE', path).then((r) => r.request!)
-export const retry = (path: string) => send<One>('POST', `${path}/retry`).then((r) => r.request!)
+export const retry = (path: string, password: string) => send<One>('POST', `${path}/retry`, { password }).then((r) => r.request!)
 
 export const getRetention = (orgId: string) => send<{ years: Retention }>('GET', `/orgs/${orgId}/retention`).then((r) => r.years)
 export const setRetention = (orgId: string, years: Retention) => send<{ years: Retention }>('PUT', `/orgs/${orgId}/retention`, { years }).then((r) => r.years)

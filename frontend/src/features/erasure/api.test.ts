@@ -30,10 +30,10 @@ describe('erasure api', () => {
     expect(call(fn, 1)).toMatchObject({ url: '/me/erasure', method: 'GET' })
   })
 
-  it('retry posts to /retry', async () => {
+  it('retry posts the password to /retry (ADR-031 §2)', async () => {
     const fn = mockFetch(json(200, { request: r }))
-    await retry(MY_ERASURE)
-    expect(call(fn)).toMatchObject({ url: '/me/erasure/retry', method: 'POST' })
+    await retry(MY_ERASURE, 'pw-12345678')
+    expect(call(fn)).toMatchObject({ url: '/me/erasure/retry', method: 'POST', body: JSON.stringify({ password: 'pw-12345678' }) })
   })
 
   it('reads and sets retention, null meaning keep nothing', async () => {

@@ -35,19 +35,30 @@ export function ErasureRequestCard({ path, heading, warning, onRequested }: { pa
     }
   }
 
-  function ask(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const form = e.currentTarget
-    const password = String(new FormData(form).get('password'))
-    const problem = passwordProblem(password)
-    if (problem) return setError(t(problem))
-    void run(() => api.request(path, password), () => {
-      form.reset()
-      onRequested?.()
-    })
+  // Asking and retrying both need the password again (ADR-031 §2).
+  function submitWith(send: (path: string, password: string) => Promise<api.ErasureRequest>, after?: () => void) {
+    return (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault()
+      const form = e.currentTarget
+      const password = String(new FormData(form).get('password'))
+      const problem = passwordProblem(password)
+      if (problem) return setError(t(problem))
+      void run(() => send(path, password), () => {
+        form.reset()
+        after?.()
+      })
+    }
   }
+  const ask = submitWith(api.request, onRequested)
+  const retry = submitWith(api.retry)
 
   const view = viewOf(req ?? null)
+  const passwordField = (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor={`erase-pw-${path}`}>{t('erasure.password')}</Label>
+      <Input id={`erase-pw-${path}`} name="password" type="password" className="h-11" required maxLength={128} autoComplete="current-password" />
+    </div>
+  )
   return (
     <Card>
       <CardHeader>
@@ -58,10 +69,7 @@ export function ErasureRequestCard({ path, heading, warning, onRequested }: { pa
         {req !== undefined && view === 'none' && (
           <form onSubmit={ask} className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">{warning}</p>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor={`erase-pw-${path}`}>{t('erasure.password')}</Label>
-              <Input id={`erase-pw-${path}`} name="password" type="password" className="h-11" required maxLength={128} autoComplete="current-password" />
-            </div>
+            {passwordField}
             <Button type="submit" variant="destructive" className="h-11 w-full" disabled={pending}>
               {t('erasure.request')}
             </Button>
@@ -77,12 +85,13 @@ export function ErasureRequestCard({ path, heading, warning, onRequested }: { pa
         )}
         {view === 'running' && <p role="status">{t('erasure.running')}</p>}
         {view === 'failed' && (
-          <>
+          <form onSubmit={retry} className="flex flex-col gap-4">
             <p role="alert" className="text-sm text-destructive">{t('erasure.failed')}</p>
-            <Button type="button" className="h-11 w-full" disabled={pending} onClick={() => void run(() => api.retry(path))}>
+            {passwordField}
+            <Button type="submit" className="h-11 w-full" disabled={pending}>
               {t('erasure.retry')}
             </Button>
-          </>
+          </form>
         )}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       </CardContent>
