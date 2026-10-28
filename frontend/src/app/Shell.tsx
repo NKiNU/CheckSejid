@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { LogOut } from 'lucide-react'
+import { KeyRound, LogOut } from 'lucide-react'
 import { LanguageSwitch, useT } from '@/i18n/index.tsx'
 import { Nav } from './Nav.tsx'
 import { useSession } from './session.tsx'
@@ -18,6 +18,14 @@ export function Shell({ tabs, title, context }: { tabs: Tab[]; title: ReactNode;
     <>
       <LanguageSwitch />
       {status === 'in' ? (
+        <>
+        <Link
+          to="/account/password"
+          aria-label={t('account.password')}
+          className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+        >
+          <KeyRound className="size-5" aria-hidden />
+        </Link>
         <button
           type="button"
           aria-label={t('auth.logOut')}
@@ -26,6 +34,7 @@ export function Shell({ tabs, title, context }: { tabs: Tab[]; title: ReactNode;
         >
           <LogOut className="size-5" aria-hidden />
         </button>
+        </>
       ) : (
         <Link to="/login" className="inline-flex min-h-11 items-center px-2 text-sm text-primary underline">{t('auth.logIn')}</Link>
       )}

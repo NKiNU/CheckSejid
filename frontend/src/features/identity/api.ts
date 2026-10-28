@@ -40,6 +40,11 @@ export async function login(email: string, password: string) {
   accessToken = (await post<{ accessToken: string }>('/auth/login', { email, password })).accessToken
 }
 
+// AUTH-007: the server revokes every refresh token and answers with a new session, so no re-login is needed.
+export async function changePassword(currentPassword: string, newPassword: string) {
+  accessToken = (await post<{ accessToken: string }>('/auth/password', { currentPassword, newPassword })).accessToken
+}
+
 // Restores a session from the refresh cookie (e.g. after a page reload). Returns false if none.
 // Concurrent callers share one request: sending the same refresh token twice would be
 // treated by the server as token reuse and revoke the session (e.g. React StrictMode effects).

@@ -39,6 +39,18 @@ export const ms: Record<Key, string> = {
   'auth.logOut': 'Log keluar',
   'auth.welcome': 'Selamat datang, {name}',
 
+  'account.password': "Tukar kata laluan",
+  'account.current': "Kata laluan semasa",
+  'account.new': "Kata laluan baharu",
+  'account.confirm': "Sahkan kata laluan baharu",
+  'account.hint': "Sekurang-kurangnya 12 aksara.",
+  'account.tooShort': "Kata laluan baharu mestilah sekurang-kurangnya 12 aksara.",
+  'account.tooLong': "Kata laluan baharu mestilah tidak melebihi 128 aksara.",
+  'account.mismatch': "Kata laluan tidak sepadan.",
+  'account.currentWrong': "Kata laluan semasa tidak betul.",
+  'account.saved': "Kata laluan ditukar. Anda kekal log masuk pada peranti ini; peranti lain telah dilog keluar.",
+  'account.save': "Tukar kata laluan",
+
   'notif.heading': 'Notifikasi', // REVIEW: "Notifikasi" vs "Pemberitahuan"
   'notif.unread': '{count} belum dibaca',
   'notif.new': 'Belum dibaca',

@@ -37,6 +37,18 @@ export const en = {
   'auth.logOut': 'Log out',
   'auth.welcome': 'Welcome, {name}',
 
+  'account.password': "Change password",
+  'account.current': "Current password",
+  'account.new': "New password",
+  'account.confirm': "Confirm new password",
+  'account.hint': "At least 12 characters.",
+  'account.tooShort': "The new password must be at least 12 characters.",
+  'account.tooLong': "The new password must be at most 128 characters.",
+  'account.mismatch': "The passwords do not match.",
+  'account.currentWrong': "The current password is incorrect.",
+  'account.saved': "Password changed. You stay signed in on this device; other devices were signed out.",
+  'account.save': "Change password",
+
   'notif.heading': 'Notifications',
   'notif.unread': '{count} unread',
   'notif.new': 'Unread',

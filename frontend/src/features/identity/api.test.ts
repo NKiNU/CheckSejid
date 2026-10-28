@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, login, logout, me, refresh } from './api.ts'
+import { ApiError, changePassword, login, logout, me, refresh } from './api.ts'
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -22,6 +22,16 @@ describe('identity api', () => {
     await login('a@example.com', 'pw')
     await me()
     expect(authHeader(fn, 1)).toBe('Bearer abc')
+  })
+
+  it('changePassword posts both passwords and keeps the new access token', async () => {
+    const fn = mockFetch(json(200, { accessToken: 'old' }), json(200, { accessToken: 'new' }), json(200, { user: { id: '1' } }))
+    await login('a@example.com', 'pw')
+    await changePassword('current-pw', 'a-new-password')
+    await me()
+    expect(fn.mock.calls[1]![0]).toBe('/auth/password')
+    expect(JSON.parse(fn.mock.calls[1]![1]!.body as string)).toEqual({ currentPassword: 'current-pw', newPassword: 'a-new-password' })
+    expect(authHeader(fn, 2)).toBe('Bearer new')
   })
 
   it('forgets the access token on logout', async () => {

@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router
 import { useT } from '@/i18n/index.tsx'
 import { DiscoverPanel } from '@/features/public/DiscoverPanel.tsx'
 import { FeedPanel } from '@/features/public/FeedPanel.tsx'
+import { ChangePassword } from '@/features/identity/ChangePassword.tsx'
 import { IslamicPanel } from '@/features/islamic/IslamicPanel.tsx'
 import { NotificationsPanel } from '@/features/notifications/NotificationsPanel.tsx'
 import { AuthPage } from './AuthPage.tsx'
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/feed', element: <><MyOrganisations /><FeedPanel /></> },
           { path: '/notifications', element: <NotificationsPanel /> },
+          { path: '/account/password', element: <ChangePassword /> },
         ],
       },
       { path: '*', element: <NotFound /> },
