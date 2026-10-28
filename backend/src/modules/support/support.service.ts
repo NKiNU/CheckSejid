@@ -1,6 +1,6 @@
 // ADR-030/032 consented support access. Only the owner approves, denies, extends or revokes (the routes
 // require an owner-only key); a grant is for one named admin, one organisation, one window.
-import type { Prisma, SupportAccessGrant } from "../../../generated/prisma/client.ts";
+import { Prisma, type SupportAccessGrant } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
 import type { NotificationType } from "../notifications/notifications.service.ts";
@@ -38,14 +38,18 @@ const auditGrant = (tx: Tx, actor: string, action: string, g: SupportAccessGrant
 
 export async function requestAccess(adminUserId: string, organisationId: string, reason: string) {
   await endExpired(new Date(), organisationId); // an expired-but-stored grant must not block a new request (SupportAccessGrant_open_request)
+  const alreadyOpen = () => new HttpError(409, "REQUEST_ALREADY_OPEN", "You already have an open request or active access for this organisation");
   return prisma.$transaction(async (tx) => {
     if (!(await tx.organisation.findUnique({ where: { id: organisationId }, select: { id: true } }))) throw orgNotFound();
     const open = await tx.supportAccessGrant.count({ where: { organisationId, adminUserId, status: { in: ["REQUESTED", "GRANTED"] } } });
-    if (open > 0) throw new HttpError(409, "REQUEST_ALREADY_OPEN", "You already have an open request or active access for this organisation");
+    if (open > 0) throw alreadyOpen();
     const g = await tx.supportAccessGrant.create({ data: { organisationId, adminUserId, reason } });
     await auditGrant(tx, adminUserId, "support.request", g);
     await tellOwner(tx, g, "support.requested", "Support access requested");
     return view(g);
+  }).catch((e: unknown) => {
+    // Two parallel requests both pass the count; the open-request index rejects the second.
+    throw e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002" ? alreadyOpen() : e;
   });
 }
 

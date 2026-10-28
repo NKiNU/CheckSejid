@@ -37,6 +37,13 @@ const inbox = (org: TestTenant, type: string) =>
   prisma.notification.findMany({ where: { organisationId: org.organisationId, recipientUserId: org.userId, type } });
 
 describe.skipIf(!hasDb)("support access (database)", () => {
+  it("two parallel requests: one is created, the other is a 409, never a 500", async () => {
+    const admin = await platformAdmin();
+    const t = await createTenant("Masjid P");
+    const codes = (await Promise.all([ask(admin, t), ask(admin, t)])).map((r) => r.status).sort();
+    expect(codes).toEqual([201, 409]);
+  });
+
   beforeEach(async () => {
     await Promise.all(Object.values(supportRateLimitStores).map((s) => s.resetAll()));
   });

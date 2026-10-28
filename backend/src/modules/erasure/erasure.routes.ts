@@ -32,8 +32,9 @@ erasureRouter.get("/orgs/:orgId/erasure", ...ownerOnly, async (req, res) => {
 erasureRouter.delete("/orgs/:orgId/erasure", ...ownerOnly, async (req, res) => {
   res.json({ request: await erasure.cancelErasure("ORGANISATION", req.tenant!.organisationId, req.auth!.userId) });
 });
-erasureRouter.post("/orgs/:orgId/erasure/retry", ...ownerOnly, async (req, res) => {
-  res.json({ request: await erasure.retryErasure("ORGANISATION", req.tenant!.organisationId) });
+erasureRouter.post("/orgs/:orgId/erasure/retry", requireAuth, requestLimit, requireTenant, requirePermission("organisation.archive"), anyState, async (req, res) => {
+  const { password } = passwordBody.parse(req.body);
+  res.json({ request: await erasure.retryErasure("ORGANISATION", req.tenant!.organisationId, req.auth!.userId, password) });
 });
 
 erasureRouter.get("/orgs/:orgId/retention", ...ownerOnly, async (req, res) => {
@@ -55,6 +56,7 @@ erasureRouter.get("/me/erasure", requireAuth, async (req, res) => {
 erasureRouter.delete("/me/erasure", requireAuth, async (req, res) => {
   res.json({ request: await erasure.cancelErasure("USER", req.auth!.userId, req.auth!.userId) });
 });
-erasureRouter.post("/me/erasure/retry", requireAuth, async (req, res) => {
-  res.json({ request: await erasure.retryErasure("USER", req.auth!.userId) });
+erasureRouter.post("/me/erasure/retry", requireAuth, requestLimit, async (req, res) => {
+  const { password } = passwordBody.parse(req.body);
+  res.json({ request: await erasure.retryErasure("USER", req.auth!.userId, req.auth!.userId, password) });
 });

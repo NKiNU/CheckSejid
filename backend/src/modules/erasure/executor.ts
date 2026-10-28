@@ -3,7 +3,7 @@
 import type { ErasureRequest } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError, safeErrorLog } from "../../errors.ts";
-import { deleteObject } from "../../storage.ts";
+import { deleteObject, putOpaqueObject } from "../../storage.ts";
 import { platformAudit } from "../rbac/rbac.ts";
 import { forTenant } from "../tenancy/tenant.ts";
 import { archiveOrganisation, discardArchive } from "./archive.ts";
@@ -19,8 +19,8 @@ async function eraseOrganisation(r: ErasureRequest) {
   try {
     await prisma.$transaction(
       async (tx) => {
-        // Only this transaction may delete audit rows (erasure.migration.sql); the setting ends with it.
-        await tx.$executeRawUnsafe(`SET LOCAL app.erasure = 'on'`);
+        // Only this transaction may delete audit rows (the audit_log_append_only trigger); the setting ends with it.
+        await tx.$queryRaw`SELECT set_config('app.erasure', ${organisationId}, true)`; // scoped to this organisation
         await tx.$queryRaw`SELECT 1 FROM "Organisation" WHERE "id" = ${organisationId}::uuid FOR UPDATE`;
         const org = await tx.organisation.findUnique({ where: { id: organisationId } });
         if (org) {
@@ -43,7 +43,7 @@ async function eraseOrganisation(r: ErasureRequest) {
         }
         await tx.erasureRequest.update({ where: { id: r.id }, data: { status: "COMPLETED", finishedAt: new Date() } });
       },
-      { timeout: 120_000 },
+      { timeout: Number(process.env["ERASURE_TX_TIMEOUT_MS"]) || 120_000 },
     );
   } catch (e) {
     if (archived) await discardArchive(archived);
@@ -51,6 +51,19 @@ async function eraseOrganisation(r: ErasureRequest) {
   }
   for (const key of files) await deleteObject(key); // best effort; cached public copies expire with the CDN TTL (ADR-025)
 }
+
+// ADR-031 §7: a content-free record outside the database, replayed after a restore. Never undoes the erasure.
+async function writeLedger(r: ErasureRequest) {
+  try {
+    await putOpaqueObject(`erasure-ledger/${r.id}.json`, Buffer.from(JSON.stringify({ kind: r.kind, subjectId: r.subjectId, finishedAt: new Date().toISOString() })));
+  } catch (e) {
+    console.error("erasure: ledger write failed", e instanceof Error ? e.name : "error");
+  }
+}
+
+// Single instance (ADR-026): at start nothing can be running, so a RUNNING row is a crash leftover.
+export const failInterrupted = () =>
+  prisma.erasureRequest.updateMany({ where: { status: "RUNNING" }, data: { status: "FAILED", failureCode: "INTERRUPTED", finishedAt: new Date() } });
 
 export async function runDueErasures(now = new Date()) {
   const due = await prisma.erasureRequest.findMany({
@@ -64,6 +77,7 @@ export async function runDueErasures(now = new Date()) {
     if (count === 0) continue;
     try {
       await (r.kind === "ORGANISATION" ? eraseOrganisation(r) : eraseUser(r));
+      await writeLedger(r);
     } catch (e) {
       console.error("erasure failed", r.id, safeErrorLog(e));
       await prisma.erasureRequest.update({

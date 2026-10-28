@@ -1,6 +1,6 @@
 // Phase 13A (ADR-029, ADR-031) integration tests against a real PostgreSQL (DATABASE_URL, migrations applied
-// plus erasure.migration.sql) and an S3 emulator.
-import { mkdtempSync, existsSync, rmSync } from "node:fs";
+//) and an S3 emulator.
+import { mkdtempSync, existsSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import argon2 from "argon2";
@@ -10,22 +10,28 @@ import { Prisma } from "../../../generated/prisma/client.ts";
 import { app } from "../../app.ts";
 import { prisma } from "../../db.ts";
 import { getObjectBytes, newObjectKey, putObject } from "../../storage.ts";
+import * as storage from "../../storage.ts";
 import { createTenant, createUser, expectCrossTenantDenied, type TestTenant } from "../../test/cross-tenant.ts";
 import { activeTenant, addMember, as, resetStores, setOrgStatus } from "../../test/fixtures.ts";
 import { FILES, startS3 } from "../../test/s3.ts";
 import { rbacRateLimitStores } from "../rbac/rbac.routes.ts";
 import * as rbac from "../rbac/rbac.ts";
 import { tenancyRateLimitStores } from "../tenancy/tenancy.routes.ts";
-import { decrypt, destroyExpiredArchives, readArchiveKey } from "./archive.ts";
+import { assertKeyDirWritable, decrypt, destroyExpiredArchives, readArchiveKey } from "./archive.ts";
 import { erasureRateLimitStores } from "./erasure.routes.ts";
 import { GRACE_MS } from "./erasure.service.ts";
-import { runDueErasures } from "./executor.ts";
+import { failInterrupted, runDueErasures } from "./executor.ts";
 import { registry, survivesErasure } from "./registry.ts";
 
 // Delegates to the real platformAudit; one test makes it fail to prove the whole erasure rolls back.
 vi.mock("../rbac/rbac.ts", async (orig) => {
   const real = await orig<typeof import("../rbac/rbac.ts")>();
   return { ...real, platformAudit: vi.fn(real.platformAudit) };
+});
+
+vi.mock("../../storage.ts", async (orig) => {
+  const real = await orig<typeof import("../../storage.ts")>();
+  return { ...real, putOpaqueObject: vi.fn(real.putOpaqueObject) };
 });
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -123,7 +129,7 @@ describe.skipIf(!hasDb)("erasure (database)", () => {
         { method: "get", path: `${org(a.t)}/erasure` },
         { method: "delete", path: `${org(a.t)}/erasure` },
         { method: "post", path: `${org(a.t)}/erasure`, body: { password: PASSWORD } },
-        { method: "post", path: `${org(a.t)}/erasure/retry` },
+        { method: "post", path: `${org(a.t)}/erasure/retry`, body: { password: PASSWORD } },
         { method: "get", path: `${org(a.t)}/retention` },
         { method: "put", path: `${org(a.t)}/retention`, body: { years: 1 } },
       ], { snapshot: () => prisma.erasureRequest.findMany({ where: { subjectId: a.t.organisationId } }) });
@@ -216,7 +222,13 @@ describe.skipIf(!hasDb)("erasure (database)", () => {
       const failed = await prisma.erasureRequest.findFirstOrThrow({ where: { subjectId: a.t.organisationId } });
       expect(failed).toMatchObject({ status: "FAILED", failureCode: "ERASURE_FAILED" });
 
-      await request(app).post(`${org(a.t)}/erasure/retry`).set(as(a.t)).expect(200);
+      const retry = (password?: string) => request(app).post(`${org(a.t)}/erasure/retry`).set(as(a.t)).send(password === undefined ? {} : { password });
+      await retry().expect(400);
+      await retry("wrong password!!").expect(401);
+      expect((await prisma.erasureRequest.findUniqueOrThrow({ where: { id: failed.id } })).status).toBe("FAILED");
+      await retry(PASSWORD).expect(200);
+      const inbox = await request(app).get("/me/notifications").set(as(a.member));
+      expect(inbox.body.notifications.filter((n: { type: string }) => n.type === "erasure.requested")).toHaveLength(2); // request + retry
       await runDueErasures(new Date());
       expect((await counts(a.t.organisationId)).org).toBe(0);
       expect((await prisma.erasureRequest.findUniqueOrThrow({ where: { id: failed.id } })).status).toBe("COMPLETED");
@@ -294,6 +306,86 @@ describe.skipIf(!hasDb)("erasure (database)", () => {
       await runDueErasures(later());
       expect(await prisma.archiveRecord.count({ where: { organisationId: a.t.organisationId } })).toBe(0);
       expect(existsSync(join(keyDir, `${a.t.organisationId}.key`))).toBe(false);
+    });
+  });
+
+  describe("review fixes", () => {
+    it("a RUNNING request left by a crash becomes FAILED/INTERRUPTED at start", async () => {
+      const a = await seed();
+      await requestErasure(a.t).expect(201);
+      await prisma.erasureRequest.updateMany({ where: { subjectId: a.t.organisationId }, data: { status: "RUNNING" } });
+      await failInterrupted();
+      expect(await prisma.erasureRequest.findFirstOrThrow({ where: { subjectId: a.t.organisationId } })).toMatchObject({ status: "FAILED", failureCode: "INTERRUPTED" });
+    });
+
+    it("a stale key from a crashed run is overwritten, not EEXIST", async () => {
+      const a = await seed();
+      await request(app).put(`${org(a.t)}/retention`).set(as(a.t)).send({ years: 1 }).expect(200);
+      writeFileSync(join(keyDir, `${a.t.organisationId}.key`), "stale");
+      await requestErasure(a.t).expect(201);
+      await runDueErasures(later());
+      expect((await prisma.erasureRequest.findFirstOrThrow({ where: { subjectId: a.t.organisationId } })).status).toBe("COMPLETED");
+      expect((await readArchiveKey(a.t.organisationId)).length).toBe(32);
+    });
+
+    it("assertKeyDirWritable creates the directory 0700 and rejects an unset one", async () => {
+      const dir = join(keyDir, "nested");
+      const saved = process.env["ERASURE_KEY_DIR"];
+      process.env["ERASURE_KEY_DIR"] = dir;
+      await assertKeyDirWritable();
+      expect(statSync(dir).mode & 0o777).toBe(0o700);
+      process.env["ERASURE_KEY_DIR"] = "";
+      await expect(assertKeyDirWritable()).rejects.toThrow(/ERASURE_KEY_DIR/);
+      process.env["ERASURE_KEY_DIR"] = saved;
+    });
+
+    it("user retry needs the password too", async () => {
+      const u = await createUser();
+      await withPassword(u.userId);
+      await request(app).post("/me/erasure").set(as(u)).send({ password: PASSWORD }).expect(201);
+      await prisma.erasureRequest.updateMany({ where: { subjectId: u.userId }, data: { status: "FAILED" } });
+      await request(app).post("/me/erasure/retry").set(as(u)).send({}).expect(400);
+      await request(app).post("/me/erasure/retry").set(as(u)).send({ password: "wrong password!!" }).expect(401);
+      await request(app).post("/me/erasure/retry").set(as(u)).send({ password: PASSWORD }).expect(200);
+    });
+
+    it("writes a content-free ledger object after commit; a failed write does not undo the erasure", async () => {
+      const a = await seed();
+      await requestErasure(a.t).expect(201);
+      await runDueErasures(later());
+      const req = await prisma.erasureRequest.findFirstOrThrow({ where: { subjectId: a.t.organisationId } });
+      const entry = JSON.parse((await getObjectBytes(`erasure-ledger/${req.id}.json`)).toString());
+      expect(entry).toMatchObject({ kind: "ORGANISATION", subjectId: a.t.organisationId });
+      expect(Object.keys(entry).sort()).toEqual(["finishedAt", "kind", "subjectId"]);
+
+      const b = await seed("Masjid B");
+      await requestErasure(b.t).expect(201);
+      vi.mocked(storage.putOpaqueObject).mockRejectedValueOnce(new Error("spaces down"));
+      await runDueErasures(later());
+      expect((await counts(b.t.organisationId)).org).toBe(0);
+      expect((await prisma.erasureRequest.findFirstOrThrow({ where: { subjectId: b.t.organisationId } })).status).toBe("COMPLETED");
+    });
+
+    it("the audit delete is scoped to the organisation being erased", async () => {
+      const a = await seed("Masjid A");
+      const b = await seed("Masjid B");
+      const del = (setting: string, orgId: string) =>
+        prisma.$transaction(async (tx) => {
+          await tx.$queryRaw`SELECT set_config('app.erasure', ${setting}, true)`;
+          await tx.$executeRawUnsafe(`DELETE FROM "AuditLog" WHERE "organisationId" = '${orgId}'::uuid`);
+        });
+      await expect(del("on", a.t.organisationId)).rejects.toThrow(/append-only/);
+      await expect(del(a.t.organisationId, b.t.organisationId)).rejects.toThrow(/append-only/);
+      expect(await prisma.auditLog.count({ where: { organisationId: b.t.organisationId } })).toBeGreaterThan(0);
+    });
+
+    it("retention cannot change while an erasure request is open (409)", async () => {
+      const { t } = await seed();
+      await requestErasure(t).expect(201);
+      const res = await request(app).put(`${org(t)}/retention`).set(as(t)).send({ years: 3 }).expect(409);
+      expect(res.body.error.code).toBe("ERASURE_IN_PROGRESS");
+      await request(app).delete(`${org(t)}/erasure`).set(as(t)).expect(200);
+      await request(app).put(`${org(t)}/retention`).set(as(t)).send({ years: 3 }).expect(200);
     });
   });
 

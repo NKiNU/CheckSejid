@@ -1,5 +1,6 @@
 import { app } from "./app.ts";
 import { accessSecret } from "./modules/identity/auth.ts";
+import { assertKeyDirWritable } from "./modules/erasure/archive.ts";
 import { startErasureJobs } from "./modules/erasure/jobs.ts";
 import { startPrayerTimeRefresh } from "./modules/islamic/prayer.service.ts";
 
@@ -9,6 +10,7 @@ accessSecret(); // fail fast on a missing or weak signing secret
 if (process.env.NODE_ENV === "production") {
   if (!process.env.CLAMD_HOST?.trim()) throw new Error("CLAMD_HOST must be set in production (ADR-025 §2)");
   const pub = process.env.S3_PUBLIC_BUCKET?.trim();
+  await assertKeyDirWritable(); // ADR-031 §6: archive keys live on a persistent volume
   if (!pub || pub === process.env.S3_BUCKET?.trim()) throw new Error("S3_PUBLIC_BUCKET must be set and differ from S3_BUCKET (ADR-025 §1)");
 }
 

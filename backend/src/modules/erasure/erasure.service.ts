@@ -25,6 +25,9 @@ const duplicate = (e: unknown) =>
     ? new HttpError(409, "ERASURE_ALREADY_REQUESTED", "A deletion request is already open")
     : e;
 
+const notifyRequested = (tx: Prisma.TransactionClient, organisationId: string, userId: string, requestId: string) =>
+  notify(tx, { organisationId, actorUserId: userId, type: "erasure.requested", title: "Deletion of this organisation was requested", targetType: "erasure_request", targetId: requestId });
+
 // Only the owner reaches this (route guard). The grace period starts now; members are told (ADR-017).
 export async function requestOrganisationErasure(organisationId: string, userId: string, password: string) {
   await verifyPassword(userId, password);
@@ -33,7 +36,7 @@ export async function requestOrganisationErasure(organisationId: string, userId:
       const r = await tx.erasureRequest.create({
         data: { kind: "ORGANISATION", subjectId: organisationId, requestedByUserId: userId, executeAfter: new Date(Date.now() + GRACE_MS) },
       });
-      await notify(tx, { organisationId, actorUserId: userId, type: "erasure.requested", title: "Deletion of this organisation was requested", targetType: "erasure_request", targetId: r.id });
+      await notifyRequested(tx, organisationId, userId, r.id);
       return view(r);
     });
   } catch (e) {
@@ -69,16 +72,21 @@ export async function cancelErasure(kind: ErasureKind, subjectId: string, userId
   });
 }
 
-// A FAILED request goes back to the queue; the next scheduler run picks it up.
-export async function retryErasure(kind: ErasureKind, subjectId: string) {
+// A FAILED request goes back to the queue; the next scheduler run picks it up. Needs the password like
+// a new request (ADR-031 amendment §2), and an organisation's members are told.
+export async function retryErasure(kind: ErasureKind, subjectId: string, userId: string, password: string) {
+  await verifyPassword(userId, password);
   try {
     const failed = await prisma.erasureRequest.findFirst({ where: { kind, subjectId, status: "FAILED" }, orderBy: { createdAt: "desc" } });
     if (!failed) throw new HttpError(404, "NO_FAILED_ERASURE", "No failed deletion request");
-    const { count } = await prisma.erasureRequest.updateMany({
-      where: { id: failed.id, status: "FAILED" },
-      data: { status: "PENDING_GRACE", executeAfter: new Date(), failureCode: null, finishedAt: null },
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.erasureRequest.updateMany({
+        where: { id: failed.id, status: "FAILED" },
+        data: { status: "PENDING_GRACE", executeAfter: new Date(), failureCode: null, finishedAt: null },
+      });
+      if (count === 0) throw new HttpError(404, "NO_FAILED_ERASURE", "No failed deletion request");
+      if (kind === "ORGANISATION") await notifyRequested(tx, subjectId, userId, failed.id);
     });
-    if (count === 0) throw new HttpError(404, "NO_FAILED_ERASURE", "No failed deletion request");
     return view({ ...failed, status: "PENDING_GRACE", failureCode: null, finishedAt: null });
   } catch (e) {
     throw duplicate(e);
@@ -98,6 +106,9 @@ export async function getRetention(organisationId: string) {
 export async function setRetention(organisationId: string, years: number | null) {
   if (years !== null && !(RETENTION_YEARS as readonly number[]).includes(years)) throw new HttpError(400, "VALIDATION_ERROR", "Retention must be 1, 3, 5 or 7 years");
   const db = forTenant(organisationId);
+  // The executor reads the setting when it runs, so a change then would race the archive.
+  if (await prisma.erasureRequest.count({ where: { kind: "ORGANISATION", subjectId: organisationId, status: { in: ["PENDING_GRACE", "RUNNING"] } } }))
+    throw new HttpError(409, "ERASURE_IN_PROGRESS", "Retention cannot change while a deletion request is open");
   if (years === null) await db.retentionSetting.deleteMany({ where: {} });
   else {
     const { count } = await db.retentionSetting.updateMany({ where: {}, data: { years } });

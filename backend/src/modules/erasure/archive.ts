@@ -2,7 +2,7 @@
 // database, as a 0600 file in ERASURE_KEY_DIR (a directory on the server that is not part of the DB
 // dump). Destroying the file at expiry is the destruction (ADR-029 §5). Opening an archive is not built.
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:crypto";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, constants, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Prisma } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
@@ -10,11 +10,12 @@ import { deleteObject, putOpaqueObject } from "../../storage.ts";
 import { forTenant } from "../tenancy/tenant.ts";
 import { delegateOf, registry } from "./registry.ts";
 
-const keyFile = (organisationId: string) => {
+const keyDir = () => {
   const dir = process.env["ERASURE_KEY_DIR"]?.trim();
   if (!dir) throw new Error("archive: ERASURE_KEY_DIR is not set");
-  return join(dir, `${organisationId}.key`);
+  return dir;
 };
+const keyFile = (organisationId: string) => join(keyDir(), `${organisationId}.key`);
 
 // iv (12) | auth tag (16) | ciphertext
 export function encrypt(key: Buffer, plain: Buffer) {
@@ -28,6 +29,13 @@ export function decrypt(key: Buffer, blob: Buffer) {
   const d = createDecipheriv("aes-256-gcm", key, blob.subarray(0, 12));
   d.setAuthTag(blob.subarray(12, 28));
   return Buffer.concat([d.update(blob.subarray(28)), d.final()]); // throws on a wrong key or tampering
+}
+
+// Production startup check (ADR-031 §6): the key directory must be configured and writable. Created 0700.
+export async function assertKeyDirWritable() {
+  const dir = keyDir();
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  await access(dir, constants.W_OK);
 }
 
 export const readArchiveKey = (organisationId: string) => readFile(keyFile(organisationId));
@@ -47,8 +55,8 @@ export async function archiveOrganisation(organisationId: string, tx: Prisma.Tra
   const plain = Buffer.from(JSON.stringify(snapshot, (_k, v) => (typeof v === "bigint" ? v.toString() : v)));
   const key = randomBytes(32);
   const file = keyFile(organisationId);
-  await mkdir(join(file, ".."), { recursive: true });
-  await writeFile(file, key, { mode: 0o600, flag: "wx" }); // never overwrites an existing key
+  await mkdir(join(file, ".."), { recursive: true, mode: 0o700 });
+  await writeFile(file, key, { mode: 0o600 }); // a key with no ArchiveRecord is a crashed run's leftover: overwrite
   const storageKey = `archive/${organisationId}/${randomUUID()}.enc`;
   try {
     await putOpaqueObject(storageKey, encrypt(key, plain));
