@@ -56,7 +56,7 @@ export function OrgHome() {
 
 export function OrgHub() {
   const { org, perms, usable } = useOrg()
-  return usable ? <HubPanel orgId={org.id} perms={perms} /> : null
+  return usable ? <HubPanel orgId={org.id} perms={perms} /> : <NotFound />
 }
 
 export function OrgFinance() {
@@ -86,10 +86,8 @@ export function OrgSettings() {
       <h1 className="text-2xl font-medium">{t('nav.settings')}</h1>
       <LifecyclePanel org={org} onChange={setOrg} />
       <VisibilityPanel
-        orgId={org.id}
-        visibility={org.visibility}
-        logoUrl={org.logoUrl}
-        coverUrl={org.coverUrl}
+        org={org}
+        onChange={setOrg}
         canEdit={perms.has('organisation.update') && org.status !== 'SUSPENDED' && org.status !== 'ARCHIVED'}
       />
     </div>

@@ -3,16 +3,17 @@ import { useT } from '../../i18n/index.tsx'
 import { Card, CardContent, CardHeader } from '@/components/ui/card.tsx'
 import { Label } from '@/components/ui/label.tsx'
 import { Select } from '@/components/ui/select.tsx'
+import type { Organisation } from '../tenancy/api.ts'
 import * as api from './api.ts'
 
 const pick = 'flex min-h-11 w-fit max-w-full cursor-pointer items-center rounded-md bg-muted px-4 text-sm font-medium peer-focus-visible:ring-2 peer-focus-visible:ring-ring active:opacity-80'
 
 // Organisation side: visibility (organisation.update) and logo/cover uploads (ADR-020).
-export function VisibilityPanel({ orgId, visibility, canEdit, logoUrl, coverUrl }: { orgId: string; visibility: api.Visibility; canEdit: boolean; logoUrl?: string | null; coverUrl?: string | null }) {
+export function VisibilityPanel({ org, canEdit, onChange }: { org: Organisation; canEdit: boolean; onChange: (o: Organisation) => void }) {
   const { t, error: message } = useT()
-  const [current, setCurrent] = useState(visibility)
   const [status, setStatus] = useState<{ text: string; ok: boolean } | null>(null)
-  const [images, setImages] = useState({ logo: logoUrl ?? null, cover: coverUrl ?? null })
+  const { id: orgId, visibility: current } = org
+  const images = { logo: org.logoUrl, cover: org.coverUrl }
   if (!canEdit)
     return (
       <p className="text-sm text-muted-foreground">
@@ -22,7 +23,7 @@ export function VisibilityPanel({ orgId, visibility, canEdit, logoUrl, coverUrl 
 
   const change = async (v: api.Visibility) => {
     try {
-      setCurrent((await api.setVisibility(orgId, v)).organisation.visibility)
+      onChange({ ...org, visibility: (await api.setVisibility(orgId, v)).organisation.visibility })
     } catch (e) {
       setStatus({ text: message(e), ok: false })
     }
@@ -32,7 +33,7 @@ export function VisibilityPanel({ orgId, visibility, canEdit, logoUrl, coverUrl 
     if (file.size > api.IMAGE_MAX_BYTES) return setStatus({ text: t('vis.tooBig'), ok: false })
     try {
       const { url } = await api.uploadProfileImage(orgId, which, file)
-      setImages((i) => ({ ...i, [which]: url }))
+      onChange({ ...org, [which === 'logo' ? 'logoUrl' : 'coverUrl']: url })
       setStatus({ text: t(which === 'logo' ? 'vis.logoUpdated' : 'vis.coverUpdated'), ok: true })
     } catch (e) {
       setStatus({ text: message(e), ok: false })
