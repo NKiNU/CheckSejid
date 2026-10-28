@@ -17,6 +17,16 @@ ADR-029 settles what erasure and retention mean. It leaves the mechanics open, a
 8. **Permissions.** No new tenant permission key. Erasure and retention use owner-only checks like `organisation.archive`, and a lapsed or suspended organisation can still request erasure (an entitlement does not block a legal right).
 9. **Schema.** Everything lives in `erasure.prisma`: `ErasureRequest`, `RetentionSetting`, `ArchiveRecord`. `tenancy.prisma` is not edited.
 
+## Amendments (2026-10-28, found while building and reviewing Phase 13A; for the product owner to confirm)
+- **§6 key custody.** A per-organisation key cannot be created at runtime in `.env` or GitHub secrets, so it is a 0600 file `ERASURE_KEY_DIR/<orgId>.key` on a persistent volume that is not in the database and not in database dumps. Destroying the key means deleting the file. Production mounts that volume, sets `ERASURE_KEY_DIR`, and the API refuses to start in production without it. Droplet snapshots that include the volume can keep keys, so the volume is excluded from them or the snapshot is treated as holding archive keys (RUNBOOK §5).
+- **§2 completion notice.** Notifications belong to the organisation and are erased with it, so no completion notification can exist. Members are notified at request and cancel only. A completion notice needs an email channel, which is not built (NOTIF-002).
+- **§2 retry.** Retrying a `FAILED` request needs the password again, like a new request, and notifies members for an organisation.
+- **§5 CDN.** Public logo and cover copies are not purged from the CDN. They expire with its TTL (ADR-025).
+- **§5 crash recovery.** A request left `RUNNING` by a crash becomes `FAILED` at the next start, and a key or blob with no `ArchiveRecord` is overwritten on retry.
+- **§7 restore.** Each completed erasure also writes a small ledger object (kind, subject id, finish time, no content) to the private Space, outside the database. After a restore, the runbook replays every ledger entry newer than the dump.
+- **§4 account erasure.** Memberships are removed before the final transaction. If it fails, the user has left their organisations but is not erased, and a retry completes it.
+- **Known limits.** An erased user's access token keeps working until it expires (15 minutes, ADR-009). Failed file deletions in the Spaces are not retried. Free text in a support `reason` is kept in the platform audit log and must not contain personal data.
+
 ## Consequence
 - Needs one hand-written migration for the trigger change and the `Restrict` foreign keys, written once at merge.
 - ⚠ Open risk (Q7): Malaysian record-keeping rules for finance records may require longer retention than erasure on request allows. The product owner should confirm with counsel before this is released to customers.

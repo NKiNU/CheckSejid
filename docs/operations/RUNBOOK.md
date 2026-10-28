@@ -109,7 +109,15 @@ Repeat this drill on the real Droplet after the first deploy, and once per quart
 - **Droplet alerts:** DigitalOcean Monitoring alert policies for CPU > 90 %, memory > 90 % and disk > 80 %, by email.
 - **Scanner:** if users report `503 SCANNER_UNAVAILABLE`, run `docker compose -f docker-compose.prod.yml logs clamd`. `clamd` updates its signatures itself (freshclam).
 
-## 5. Personal-data requests (PDPA, ADR-026 §6, manual until OQ-15 is decided)
+## 5. Personal-data requests (PDPA, ADR-026 §6)
+**Deletion is self-service since ADR-029/ADR-031**: the owner or user requests it in the app (password, 7-day grace, cancellable) and the hourly job runs it. Use the manual steps below for access or correction requests, or if the app cannot be used.
+
+**Erasure operations (ADR-031):**
+- `ERASURE_KEY_DIR` must be a persistent volume, writable by the API, set in `.env`. The API refuses to start in production without it. Keys are the only way to open a retained archive: keep this volume out of backups, or treat any backup or Droplet snapshot that has it as holding archive keys and let it age out within 7 days.
+- Erased data stays in nightly database dumps for up to 7 days (ADR-026). **After restoring a backup, replay every erasure** completed after the dump: list the `erasure-ledger/` objects in the private Space newer than the dump, insert a `PENDING_GRACE` `ErasureRequest` with `executeAfter = now()` for each (kind and subject id are in the object), and run the job before opening the service.
+- A request in `FAILED` can be retried by the requester in the app. Read the API log (`erasure: job failed`) first if the cause is unclear.
+
+**Manual steps (access or correction; deletion only if the app is unavailable):**
 1. Record the request in the operator log: requester, date, organisation, and what was asked (access, correction or deletion).
 2. Verify the requester's identity, for example from the account's email address.
 3. **Access or correction:** export or correct the user's rows with `psql` (`docker compose -f docker-compose.prod.yml exec db psql -U masyarakat masyarakat`).

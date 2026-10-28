@@ -17,5 +17,7 @@ Accepted (2026-10-05) by the product owner. Closes OQ-11.
 5. **Isolation.** The inbox shows only notifications from organisations the user still belongs to. Rows from organisations the user has left or been removed from are hidden, not deleted.
 6. **First real event.** Phase 10 wires `member.added`, sent when a member is added to an organisation. The spec events (task and roster assignment, finance approval required, event published, subscription changed) are emitted by Phases 06, 07, 08 and 11 through the same `notify()` contract.
 
+7. **Amended 2026-10-28 (ADR-031, ADR-032).** `erasure.requested` and `erasure.cancelled` follow rule 1 (all members except the actor). `support.requested`, `support.started` and `support.ended` go to the organisation owner only, never include the reason, and are written directly by the support service instead of `notify()`.
+
 ## Consequence
 Phase 10 builds the `Notification` model, `notify()`, the inbox and mark-read API, and a minimal UI. A per-event recipient narrowing (e.g. finance approval to approvers only) can replace rule 1 later by amending this ADR. No call sites change.
