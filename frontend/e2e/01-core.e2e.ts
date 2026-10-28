@@ -1,0 +1,85 @@
+import { ORG, PASSWORD, email, expect, loggedIn, login, openOrg, shot, test } from './helpers.ts'
+
+// Features from 2026-10-28: screens redesign (ADR-028 part 2), member/follow fixes, password change (part 3).
+test.describe('core screens', () => {
+  test('protected pages redirect to login, and a wrong password is refused', async ({ page }) => {
+    await page.goto('/feed')
+    await expect(page).toHaveURL(/\/login\?next=%2Ffeed/)
+    await login(page, 'owner', 'not-the-password-1')
+    await expect(page.getByRole('alert')).toBeVisible()
+    await shot(page, '01-login-wrong-password')
+  })
+
+  test('owner logs in, creates an organisation and sees it listed', async ({ page }) => {
+    await loggedIn(page, 'owner')
+    await page.goto('/feed')
+    await page.getByRole('button', { name: 'New organisation' }).click()
+    await page.getByLabel('New organisation name').fill(ORG)
+    await shot(page, '02a-create-org-dialog')
+    await page.getByRole('dialog').getByRole('button', { name: 'Create organisation' }).click()
+    // creating takes the owner into the new organisation: Draft, Owner badge, 30-day Professional trial (ADR-018)
+    await expect(page).toHaveURL(/\/org\/[0-9a-f-]{36}$/)
+    await expect(page.getByRole('heading', { name: ORG, level: 1 })).toBeVisible()
+    await expect(page.getByText('Draft')).toBeVisible()
+    await expect(page.getByText('Professional plan')).toBeVisible()
+    await shot(page, '02-new-org-home')
+    await page.goto('/feed')
+    await expect(page.getByRole('link', { name: new RegExp(ORG) }).first()).toBeVisible()
+    await shot(page, '02b-feed-with-org')
+  })
+
+  test('owner completes onboarding in settings', async ({ page }) => {
+    await loggedIn(page, 'owner')
+    await openOrg(page)
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await shot(page, '03-settings-before')
+    await page.getByLabel('Type').selectOption({ label: 'Masjid' })
+    await page.getByLabel('Contact email').fill('contact@e2e.test')
+    await page.getByLabel('Contact phone').fill('0123456789')
+    await page.getByLabel('Address').fill('1 Jalan Masjid')
+    await page.getByLabel('State').fill('Selangor')
+    await page.getByLabel('Country (2-letter code)').fill('MY')
+    await page.getByRole('button', { name: 'Save profile' }).click()
+    await page.getByRole('button', { name: 'Complete onboarding' }).click()
+    await expect(page.getByText(/^active$/i)).toBeVisible()
+    await shot(page, '04-settings-active')
+  })
+
+  test('owner adds a member by email; the member appears with the row actions', async ({ page }) => {
+    await loggedIn(page, 'owner')
+    await openOrg(page)
+    await page.getByRole('link', { name: 'Members' }).click()
+    await page.getByLabel('Add member by email').fill(email('member'))
+    await page.getByRole('button', { name: 'Add', exact: true }).click()
+    await expect(page.getByText('E2E member')).toBeVisible()
+    await shot(page, '05-members')
+  })
+
+  test('a user can change their password; the old one stops working', async ({ page }) => {
+    await loggedIn(page, 'changer') // own account: the other specs keep using the original password
+    await page.goto('/account/password')
+    const NEW = 'brand-New-Passw0rd-456'
+    await page.getByLabel('Current password', { exact: true }).fill('wrong-current-123')
+    await page.getByLabel('New password', { exact: true }).fill('short')
+    await page.getByLabel('Confirm new password').fill('short')
+    await page.getByRole('button', { name: 'Change password' }).click()
+    await expect(page.getByText('The new password must be at least 12 characters.')).toBeVisible()
+    await page.getByLabel('New password', { exact: true }).fill(NEW)
+    await page.getByLabel('Confirm new password').fill(NEW + 'x')
+    await page.getByRole('button', { name: 'Change password' }).click()
+    await expect(page.getByText('The passwords do not match.')).toBeVisible()
+    await page.getByLabel('Confirm new password').fill(NEW)
+    await page.getByRole('button', { name: 'Change password' }).click()
+    await expect(page.getByText('The current password is incorrect.')).toBeVisible()
+    await page.getByLabel('Current password', { exact: true }).fill(PASSWORD)
+    await page.getByRole('button', { name: 'Change password' }).click()
+    await expect(page.getByText(/Password changed/)).toBeVisible()
+    await shot(page, '06-password-changed')
+    // the session stays valid, and the old password no longer logs in
+    await page.context().clearCookies()
+    await login(page, 'changer')
+    await expect(page.getByRole('alert')).toBeVisible()
+    await login(page, 'changer', NEW)
+    await expect(page).not.toHaveURL(/\/login/)
+  })
+})
