@@ -13,6 +13,7 @@ import { HubPanel } from '@/features/hub/HubPanel.tsx'
 import { OperationsPanel } from '@/features/operations/OperationsPanel.tsx'
 import { VisibilityPanel } from '@/features/public/VisibilityPanel.tsx'
 import { MembersPanel } from '@/features/rbac/MembersPanel.tsx'
+import { SupportOwnerPanel } from '@/features/support/SupportOwnerPanel.tsx'
 import { SubscriptionPanel } from '@/features/subscriptions/SubscriptionPanel.tsx'
 import { LifecyclePanel } from '@/features/tenancy/OrganisationsPanel.tsx'
 import { orgStatusVariant } from '@/features/tenancy/orgStatus.ts'
@@ -85,6 +86,7 @@ export function OrgSettings() {
     <div className="grid gap-4 pt-6">
       <h1 className="text-2xl font-medium">{t('nav.settings')}</h1>
       <LifecyclePanel org={org} onChange={setOrg} />
+      {org.isOwner && <SupportOwnerPanel orgId={org.id} />}
       <VisibilityPanel
         org={org}
         onChange={setOrg}
