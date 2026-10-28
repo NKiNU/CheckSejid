@@ -30,12 +30,13 @@ export const PERMISSIONS = [
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
-// §5 — 4 platform keys. Held only by the Platform Administrator, never by a tenant role (RBAC-012).
+// §5 — 5 platform keys. Held only by the Platform Administrator, never by a tenant role (RBAC-012).
 export const PLATFORM_PERMISSIONS = [
   "platform.organisations.read",
   "platform.organisations.suspend",
   "platform.organisations.archive",
   "platform.subscriptions.manage",
+  "platform.support.access", // ADR-032 §6: file a support-access request; reads no tenant data by itself
 ] as const;
 export type PlatformPermission = (typeof PLATFORM_PERMISSIONS)[number];
 

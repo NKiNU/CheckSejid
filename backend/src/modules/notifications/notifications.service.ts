@@ -11,7 +11,11 @@ export type NotificationType =
   | "roster.assigned"
   | "finance.approval_required"
   | "event.published"
-  | "subscription.changed";
+  | "subscription.changed"
+  // ADR-032: sent to the organisation owner only, by support.service (not by notify())
+  | "support.requested"
+  | "support.started"
+  | "support.ended";
 
 export type NotificationEvent = {
   organisationId: string;

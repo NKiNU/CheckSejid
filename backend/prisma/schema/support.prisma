@@ -1,0 +1,25 @@
+// Phase 13B (ADR-030/032): owner-consented, read-only, time-boxed support access for ONE platform admin.
+// Tenant-owned (organisationId, TENANT-008). No FKs, like ErasureRequest: the record and its audit rows
+// outlive the people and must not block erasure; ids are validated by the service.
+// EXPIRED is also computed on read (status GRANTED and expiresAt <= now); endExpired() persists it.
+enum SupportGrantStatus {
+  REQUESTED
+  GRANTED
+  DENIED
+  REVOKED
+  EXPIRED
+}
+
+model SupportAccessGrant {
+  id             String             @id @default(uuid()) @db.Uuid
+  organisationId String             @db.Uuid
+  adminUserId    String             @db.Uuid
+  reason         String
+  status         SupportGrantStatus @default(REQUESTED)
+  grantedAt      DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime           @default(now())
+
+  @@index([organisationId, createdAt])
+  @@index([adminUserId, organisationId, status])
+}

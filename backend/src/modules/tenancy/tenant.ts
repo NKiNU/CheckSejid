@@ -3,12 +3,13 @@ import { z } from "zod";
 import { Prisma, type OrganisationStatus } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
+import { supportTenant } from "../support/guard.ts";
 
 declare global {
   namespace Express {
     interface Request {
       // Set by requireTenant from the database, never from client input (TENANT-003/004, AUTH-008).
-      tenant?: { organisationId: string; membershipId: string; status: OrganisationStatus };
+      tenant?: { organisationId: string; membershipId: string; status: OrganisationStatus; support?: true };
     }
   }
 }
@@ -29,7 +30,13 @@ export const requireTenant: RequestHandler = async (req, _res, next) => {
     where: { organisationId_userId: { organisationId: orgId, userId: req.auth.userId } },
     select: { id: true, organisationId: true, organisation: { select: { status: true } } },
   });
-  if (!membership) return next(orgNotFound());
+  if (!membership) {
+    // ADR-032: a platform admin with an active owner-approved grant gets a read-only context; anyone else 404.
+    const support = await supportTenant(req, orgId);
+    if (!support) return next(orgNotFound());
+    req.tenant = support;
+    return next();
+  }
   req.tenant = { organisationId: membership.organisationId, membershipId: membership.id, status: membership.organisation.status };
   next();
 };

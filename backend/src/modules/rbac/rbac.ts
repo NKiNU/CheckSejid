@@ -3,9 +3,10 @@ import type { Prisma } from "../../../generated/prisma/client.ts";
 import { prisma } from "../../db.ts";
 import { HttpError } from "../../errors.ts";
 import { forTenant, orgNotFound } from "../tenancy/tenant.ts";
+import { supportCan } from "../support/readonly.ts";
 import { isPermission, permissionsOf, type Permission, type RoleKey } from "./permissions.ts";
 
-export type TenantContext = { organisationId: string; membershipId: string };
+export type TenantContext = { organisationId: string; membershipId: string; support?: true };
 
 export const forbidden = (message = "You do not have permission to do this") =>
   new HttpError(403, "FORBIDDEN", message);
@@ -38,6 +39,7 @@ export async function effectivePermissions(t: TenantContext, db?: Prisma.Transac
 
 // Service-level check. Unknown keys are denied (RBAC-010).
 export async function hasPermission(t: TenantContext, key: Permission, db?: Prisma.TransactionClient) {
+  if (t.support) return isPermission(key) && supportCan(key); // ADR-032 §4: read-only, not from membership
   return isPermission(key) && (await effectivePermissions(t, db)).has(key);
 }
 
