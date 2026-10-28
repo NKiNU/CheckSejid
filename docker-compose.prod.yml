@@ -28,6 +28,8 @@ services:
       DATABASE_URL: "postgresql://masyarakat:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/masyarakat?schema=public"
       CLAMD_HOST: clamd:3310
       TRUST_PROXY: "1" # behind Caddy, so rate limits key on the real client IP
+    volumes:
+      - erasure-keys:/var/lib/masyarakat/erasure-keys # ADR-031 §6: archive keys, never in backups
     depends_on:
       db: { condition: service_healthy }
       clamd: { condition: service_started }
@@ -61,3 +63,4 @@ volumes:
   caddy-config:
   clamav-db:
   db-data:
+  erasure-keys:

@@ -9,6 +9,8 @@ RUN npm ci && npm cache clean --force
 COPY src ./src
 COPY tsconfig.json ./
 ENV NODE_ENV=production
+# ADR-031 §6: mount point of the erasure-keys volume; a new named volume inherits this ownership.
+RUN mkdir -p /var/lib/masyarakat/erasure-keys && chown node:node /var/lib/masyarakat/erasure-keys && chmod 700 /var/lib/masyarakat/erasure-keys
 USER node
 EXPOSE 3000
 CMD ["npm", "start"]
