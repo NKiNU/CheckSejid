@@ -11,7 +11,9 @@ export type NotificationType =
   | "roster.assigned"
   | "finance.approval_required"
   | "event.published"
-  | "subscription.changed";
+  | "subscription.changed"
+  | "erasure.requested"
+  | "erasure.cancelled";
 
 export type NotificationEvent = {
   organisationId: string;

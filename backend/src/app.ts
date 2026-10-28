@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import { prisma } from "./db.ts";
 import { errorHandler, notFound, safeErrorLog } from "./errors.ts";
+import { erasureRouter } from "./modules/erasure/erasure.routes.ts";
 import { financeRouter } from "./modules/finance/finance.routes.ts";
 import { hubRouter } from "./modules/hub/hub.routes.ts";
 import { identityRouter } from "./modules/identity/identity.routes.ts";
@@ -47,6 +48,7 @@ app.use(hubRouter);
 app.use(operationsRouter);
 app.use(financeRouter);
 app.use(islamicRouter);
+app.use(erasureRouter);
 
 app.use(notFound);
 app.use(errorHandler);
