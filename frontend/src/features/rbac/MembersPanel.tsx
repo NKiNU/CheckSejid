@@ -20,12 +20,16 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
   const [open, setOpen] = useState(false) // separate from `ask` so the copy stays put during the close animation
   const askFor = (a: NonNullable<typeof ask>) => (setAsk(a), setOpen(true))
 
-  const run = async (fn: () => Promise<unknown>) => {
+  const [busy, setBusy] = useState<string | null>(null) // member id (or 'add') with a write in flight
+  const run = async (fn: () => Promise<unknown>, id: string | null = null) => {
     setError(null)
+    setBusy(id)
     try {
       await fn()
     } catch (e) {
       setError(errorText(e)) // QUOTA_EXCEEDED on add → "upgrade your plan"
+    } finally {
+      setBusy(null)
     }
   }
 
@@ -47,12 +51,13 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
 
   async function add(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (busy) return
     const form = e.currentTarget
     await run(async () => {
       await api.addMember(orgId, String(new FormData(form).get('email')))
       form.reset()
       await load()
-    })
+    }, 'add')
   }
 
   function toggle(m: api.Member, role: api.Role) {
@@ -61,7 +66,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
     return run(async () => {
       await api.updateMember(orgId, m.id, { roles: next })
       await load()
-    })
+    }, m.id)
   }
 
   const confirmed = () => {
@@ -105,7 +110,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
                       <div className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-x-4">
                         {api.ASSIGNABLE_ROLES.map((r) => (
                           <label key={r} className="flex min-h-11 min-w-0 items-center gap-2 text-sm">
-                            <input type="checkbox" className="size-5 shrink-0" checked={m.roles.includes(r)} onChange={() => toggle(m, r)} /> {t(`role.${r}`)}
+                            <input type="checkbox" className="size-5 shrink-0" checked={m.roles.includes(r)} disabled={busy === m.id} onChange={() => toggle(m, r)} /> {t(`role.${r}`)}
                           </label>
                         ))}
                       </div>
@@ -142,7 +147,7 @@ export function MembersPanel({ orgId, myUserId, onLeft }: { orgId: string; myUse
                 <span className="sr-only">{t('members.addByEmail')}</span>
                 <Input name="email" type="email" required maxLength={254} className="h-11" />
               </Label>
-              <Button type="submit" className="h-11 px-4">{t('members.add')}</Button>
+              <Button type="submit" disabled={busy === 'add'} className="h-11 px-4">{t('members.add')}</Button>
             </form>
           </CardContent>
         </Card>
