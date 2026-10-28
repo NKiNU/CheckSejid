@@ -11,6 +11,7 @@ export function PublicOrgPage({ id }: { id: string }) {
   const [posts, setPosts] = useState<Post[]>([])
   const [events, setEvents] = useState<HubEvent[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [followError, setFollowError] = useState<string | null>(null) // toggle failure must not replace the page
   const ref = useRef<HTMLElement>(null)
   useEffect(() => {
     Promise.all([api.getPublicOrganisation(id), publicPosts(id), publicEvents(id)]).then(
@@ -28,12 +29,13 @@ export function PublicOrgPage({ id }: { id: string }) {
   if (!org) return <p role="status" className="text-muted-foreground">{t('common.loading')}</p>
 
   async function toggle() {
+    setFollowError(null)
     try {
       if (org!.following) await api.unfollow(id)
       else await api.follow(id)
       setOrg({ ...org!, following: !org!.following })
     } catch (e) {
-      setError(message(e))
+      setFollowError(message(e))
     }
   }
 
@@ -54,6 +56,7 @@ export function PublicOrgPage({ id }: { id: string }) {
               {org.following ? t('disc.unfollow') : t('disc.follow')}
             </Button>
           )}
+          {followError && <p role="alert" className="text-sm text-destructive">{followError}</p>}
         </CardContent>
       </Card>
       <h3 className="text-base font-medium">{t('disc.events')}</h3>
