@@ -184,6 +184,7 @@ One platform role in MVP. Keys are still used so that the role can be split late
 | `platform.organisations.suspend` | ACTIVE → SUSPENDED and reinstatement SUSPENDED → ACTIVE, each with a required reason. | LIFECYCLE_STATE_MACHINE |
 | `platform.organisations.archive` | ACTIVE/SUSPENDED → ARCHIVED, with a required reason. | LIFECYCLE_STATE_MACHINE |
 | `platform.subscriptions.manage` | Operator-driven subscription transitions (e.g. manual TRIAL → ACTIVE after an offline payment), as settled by OQ-03. | LIFECYCLE_STATE_MACHINE; OQ-03 |
+| `platform.support.access` | Added 2026-10-28 (ADR-032): file a consented support-access request for an organisation. Reads no tenant data by itself; only an active owner-approved grant does (ADR-030). | ADR-030; ADR-032 |
 
 Reinstatement: the product owner approved a SUSPENDED → ACTIVE transition (2026-10-05). `saas/LIFECYCLE_STATE_MACHINE.md` is amended accordingly; reinstatement uses `platform.organisations.suspend` and is audited with a reason.
 
