@@ -54,6 +54,11 @@ export async function putObject(key: string, body: Buffer, contentType: FileType
   await config().client.send(new PutObjectCommand({ Bucket: bucketFor(key), Key: key, Body: body, ContentType: contentType, ...acl }));
 }
 
+// ADR-031 §6: erasure archives are already encrypted and opaque, so they skip the type check and scan.
+export async function putOpaqueObject(key: string, body: Buffer) {
+  await config().client.send(new PutObjectCommand({ Bucket: bucketFor(key), Key: key, Body: body, ContentType: "application/octet-stream" }));
+}
+
 // Best effort: an orphaned object is harmless, a failed request must not fail the user's action.
 export async function deleteObject(key: string) {
   await config().client.send(new DeleteObjectCommand({ Bucket: bucketFor(key), Key: key })).catch((e: unknown) => {

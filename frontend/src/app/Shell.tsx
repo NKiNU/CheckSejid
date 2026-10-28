@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { KeyRound, LogOut } from 'lucide-react'
+import { KeyRound, LogOut, Trash2 } from 'lucide-react'
 import { LanguageSwitch, useT } from '@/i18n/index.tsx'
 import { Nav } from './Nav.tsx'
 import { useSession } from './session.tsx'
@@ -25,6 +25,13 @@ export function Shell({ tabs, title, context }: { tabs: Tab[]; title: ReactNode;
           className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
         >
           <KeyRound className="size-5" aria-hidden />
+        </Link>
+        <Link
+          to="/account/delete"
+          aria-label={t('erasure.menu')}
+          className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+        >
+          <Trash2 className="size-5" aria-hidden />
         </Link>
         <button
           type="button"

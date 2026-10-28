@@ -313,6 +313,28 @@ export const en = {
   'err.LOCATION_UNAVAILABLE': 'Location unavailable on this device.',
   'err.LOCATION_DENIED': 'Location unavailable: permission denied or no signal.',
   'err.PRAYER_TIMES_UNAVAILABLE': 'Prayer times are unavailable for this zone right now. Share your location to see calculated times.',
+
+  'erasure.password': 'Confirm with your password',
+  'erasure.passwordRequired': 'Enter your password to continue.',
+  'erasure.request': 'Request deletion',
+  'erasure.cancel': 'Cancel deletion',
+  'erasure.retry': 'Try again',
+  'erasure.pending': 'Deletion is scheduled for {when}. You can cancel until then.',
+  'erasure.running': 'Deletion is in progress.',
+  'erasure.failed': 'Deletion could not be completed. Nothing was deleted. You can try again.',
+  'erasure.retention': 'Keep an encrypted archive',
+  'erasure.retentionHelp': 'If you delete this organisation, you can keep its data as an encrypted archive that nobody can open, then destroyed at the end of the period. Choose nothing to delete everything for good.',
+  'erasure.keepNothing': 'Nothing (delete everything)',
+  'erasure.years': '{count} years',
+  'erasure.orgHeading': 'Delete this organisation',
+  'erasure.orgWarning': 'This permanently deletes the organisation, its finance records, content, files and member list after 7 days. Members are told. Copies in backups are gone within 7 more days.',
+  'erasure.accountHeading': 'Delete my account',
+  'erasure.accountWarning': 'After 7 days your name and email are removed and you are removed from every organisation. You cannot do this while you own an organisation: delete it or hand it over first.',
+  'err.ERASURE_ALREADY_REQUESTED': 'A deletion request is already open.',
+  'err.OWNS_ORGANISATION': 'Delete or hand over your organisation before deleting your account.',
+  'err.NO_PENDING_ERASURE': 'No deletion request is waiting.',
+  'err.NO_FAILED_ERASURE': 'No failed deletion request.',
+  'erasure.menu': 'Delete my account',
 } as const
 
 export type Key = keyof typeof en

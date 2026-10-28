@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent, CardHeader } from '@/components/ui/card.tsx'
 import { Input } from '@/components/ui/input.tsx'
 import { Label } from '@/components/ui/label.tsx'
+import { OrgErasurePanel } from '@/features/erasure/ErasurePanels.tsx'
 import { FinancePanel } from '@/features/finance/FinancePanel.tsx'
 import { HubPanel } from '@/features/hub/HubPanel.tsx'
 import { OperationsPanel } from '@/features/operations/OperationsPanel.tsx'
@@ -90,6 +91,7 @@ export function OrgSettings() {
         onChange={setOrg}
         canEdit={perms.has('organisation.update') && org.status !== 'SUSPENDED' && org.status !== 'ARCHIVED'}
       />
+      {org.isOwner && <OrgErasurePanel orgId={org.id} />}
     </div>
   )
 }
