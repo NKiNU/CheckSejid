@@ -178,6 +178,31 @@ Rules:
 | LOC-002 | The default context is Asia/Kuala_Lumpur timezone and MYR currency. | architecture/LOCALISATION_AND_TIMEZONE.md; finance/MONEY_AND_AMOUNT_RULES.md | 02, 08 | 08: currency defaults to MYR; 09: JAKIM times rendered in Asia/Kuala_Lumpur |
 | LOC-003 | Timestamps are stored consistently (UTC) and rendered in context. | architecture/LOCALISATION_AND_TIMEZONE.md | All | 06–09: event/roster instants stored UTC; DATE fields as YYYY-MM-DD (`dates.ts`) |
 
+## Frontend UI foundation (ADR-028)
+
+- Part 1 (foundation: Tailwind, shadcn/ui kit, react-router, mobile-first shell) is done.
+- Part 2 (screens redesign) is done on `feature/frontend-screens`: identity/auth, tenancy, rbac (members), public (discover, feed, visibility), hub, operations, finance, islamic, notifications, subscriptions. The `.legacy` base style is removed. Plan: `superpowers/plans/2026-10-26-frontend-screens-redesign.md`.
+- Part 3 (password change) is next.
+- Deviations recorded in this branch:
+  - Members keep role checkboxes (the API takes a multi-role array), not a Select.
+  - Finance client-side totals are removed pending a server aggregate endpoint (ADR-022); product-owner decision.
+  - Islamic: a next-prayer highlight is added (no prior computation existed).
+  - Hub "Delete draft" and finance reject and void-approve now use ConfirmDialog.
+  - Finance create dialog uploads the receipt after the record is created (create-then-upload).
+  - Create dialogs close only on success and guard against double submit.
+  - The org page-level error is shown only when the list fails to load.
+  - Finance receipt type/size is checked in the browser, also on row attach, and the file input is reset.
+  - Finance kind switch clears the list and error and ignores stale replies.
+  - A whitespace-only void reason shows 'Enter a reason'.
+  - Islamic buttons are disabled while loading and the next prayer refreshes every 60 s.
+  - The public org page scrolls into view on load, including the `?org=` deep link.
+  - Visibility previews and upload errors use `role="alert"`.
+  - The LifecyclePanel Status card is visible to all members.
+  - Member removal now asks for confirmation.
+- Open items:
+  - Server aggregate endpoint for finance totals (ADR-022).
+  - Optional hardening: `img-src` CSP limited to the Spaces origin, https-only logo and cover URLs, client type check for logo/cover uploads.
+
 ## Open questions
 
 These are implied by the specs but unclear. Do not implement a guess. Resolve each by a spec update or an ADR, then add or adjust requirement IDs.
