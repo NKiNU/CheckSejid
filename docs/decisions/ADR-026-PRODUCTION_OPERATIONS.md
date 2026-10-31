@@ -49,6 +49,7 @@ No load balancer, no second instance, no managed services beyond Spaces (no prem
 - MVP keeps all data; nothing is hard-deleted automatically.
 - A request to access, correct or delete personal data is handled manually by a platform administrator, following the procedure in the runbook. The request and the action taken are recorded.
 - Retention periods and self-service account deletion are decided after MVP (OQ-15 stays open).
+- 2026-10-26: direction for retention and erasure is in ADR-029 (Accepted); it replaces this manual procedure when built.
 
 ## Consequence
 Phase 12 adds:

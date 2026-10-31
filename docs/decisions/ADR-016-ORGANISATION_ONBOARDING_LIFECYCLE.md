@@ -42,6 +42,7 @@ One server-side lifecycle guard, separate from permissions and entitlements:
 - OQ-13: a user may be a member (any non-owner role) of several organisations, but may own at most one (`Organisation.ownerId @unique`, already enforced). "Actively manages" in ADR-006 means owning. The existing organisation list is the switcher.
 - OQ-20: the MVP keeps direct add-by-email for existing users. An invitation/consent flow is deferred until notifications exist (Phase 10 or later).
   - Amended 2026-10-07 by the product owner: invitations stay out of MVP and move to Phase 13 (growth). Direct add remains the MVP flow; it needs `members.manage`, is audited and notified (ADR-017), and the added member may leave at any time (ADR-015 §6 rule 7).
+  - Amended 2026-10-26 by the product owner: no invitation flow. Adding the right person is the owner's responsibility, so direct add stays as the permanent flow. Closes OQ-20.
 
 ### Assumptions (small; reverse by amending this ADR)
 - Organisations that already exist when the migration runs (development data only) are backfilled to ACTIVE.
