@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet, useLocation } from 'react-router'
 import { useT } from '@/i18n/index.tsx'
 import { DiscoverPanel } from '@/features/public/DiscoverPanel.tsx'
+import { UpcomingEvents } from '@/features/public/UpcomingEvents.tsx'
 import { FeedPanel } from '@/features/public/FeedPanel.tsx'
 import { ChangePassword } from '@/features/identity/ChangePassword.tsx'
 import { AccountErasure } from '@/features/erasure/ErasurePanels.tsx'
@@ -59,6 +60,7 @@ export const router = createBrowserRouter([
         path: '/',
         element: (
           <>
+            <UpcomingEvents />
             <DiscoverPanel />
             <div id="prayer" className="scroll-mt-20"><IslamicPanel /></div>
           </>

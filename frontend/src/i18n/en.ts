@@ -366,6 +366,20 @@ export const en = {
   'err.SUPPORT_READ_ONLY': 'Support access is read-only.',
   'err.SUPPORT_ACCESS_INACTIVE': 'Support access is not active for this organisation.',
   'err.REQUEST_ALREADY_OPEN': 'You already have an open request for this organisation.',
+  'disc.loadMore': 'Load more',
+  'disc.viewOrg': 'View organisation',
+  'hub.img.heading': 'Photos ({n} of {max})',
+  'hub.img.gallery': '{n} photos, swipe to see more',
+  'hub.img.main': 'Main photo',
+  'hub.img.setMain': 'Set as main',
+  'hub.img.remove': 'Remove photo',
+  'hub.img.add': 'Add photo',
+  'hub.img.hint': 'JPEG, PNG or WebP, up to 5 MB each, up to 5 photos. Photos can only be changed while the item is a draft.',
+  'hub.img.max': 'An item can have at most 5 photos.',
+  'hub.img.heic': 'HEIC photos are not supported. Use JPEG, PNG or WebP.',
+  'hub.img.type': 'Only JPEG, PNG or WebP photos are allowed.',
+  'hub.img.big': 'Photos must be 5 MB or smaller.',
+  'err.TOO_MANY_IMAGES': 'This item already has the maximum of 5 photos.',
 } as const
 
 export type Key = keyof typeof en

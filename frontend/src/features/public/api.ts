@@ -1,4 +1,5 @@
 import { call } from '../identity/api.ts'
+import type { HubImage } from '../hub/api.ts'
 
 // ADR-019. The server decides what is public; the UI only displays it.
 export type Visibility = 'PUBLIC' | 'UNLISTED' | 'PRIVATE'
@@ -46,7 +47,21 @@ export const uploadProfileImage = (orgId: string, which: 'logo' | 'cover', file:
 export const removeProfileImage = (orgId: string, which: 'logo' | 'cover') =>
   call<void>(`/orgs/${encodeURIComponent(orgId)}/${which}`, { method: 'DELETE' })
 
-export const setVisibility = (orgId: string, visibility: Visibility) =>
+// ADR-033 / PUB-007: public upcoming events, soonest first, keyset-paged by event id.
+export type UpcomingEvent = {
+  id: string
+  title: string
+  description: string
+  startsAt: string
+  endsAt: string
+  location: string | null
+  images: HubImage[]
+  organisation: { id: string; name: string; type: string | null; state: string | null }
+}
+export const upcomingEvents = (cursor?: string) =>
+  call<{ events: UpcomingEvent[]; nextCursor: string | null }>(`/public/events/upcoming${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`)
+
+export const setVisibility =(orgId: string, visibility: Visibility) =>
   call<{ organisation: { visibility: Visibility } }>(`/orgs/${encodeURIComponent(orgId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ visibility }),

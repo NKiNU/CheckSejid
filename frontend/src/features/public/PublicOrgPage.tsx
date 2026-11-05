@@ -3,6 +3,7 @@ import { useT } from '../../i18n/index.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent } from '@/components/ui/card.tsx'
 import { publicEvents, publicPosts, type HubEvent, type Post } from '../hub/api.ts'
+import { Gallery } from '../hub/Images.tsx'
 import * as api from './api.ts'
 
 export function PublicOrgPage({ id }: { id: string }) {
@@ -64,6 +65,7 @@ export function PublicOrgPage({ id }: { id: string }) {
       {events.map((e) => (
         <Card size="sm" key={e.id}>
           <CardContent className="gap-1">
+            <Gallery images={e.images} title={e.title} />
             <span className="font-medium [overflow-wrap:anywhere]">{e.title}</span>
             <span className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{dateTime(e.startsAt)}{e.location && ` · ${e.location}`}</span>
           </CardContent>
@@ -74,6 +76,7 @@ export function PublicOrgPage({ id }: { id: string }) {
       {posts.map((p) => (
         <Card size="sm" key={p.id}>
           <CardContent className="gap-1">
+            <Gallery images={p.images} title={p.title} />
             <span className="font-medium [overflow-wrap:anywhere]">{p.title}</span>
             <span className="whitespace-pre-line text-sm text-muted-foreground [overflow-wrap:anywhere]">{p.body}</span>
           </CardContent>
