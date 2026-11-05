@@ -82,6 +82,7 @@ Rules:
 | PUB-004 | Internal finance and management data is never public. | modules/organisation/ORGANISATION_PROFILE.md | 05, 08 | 05: `public.db.test.ts` › public listing exposes profile fields only; 08: finance routes are tenant-only (no public finance endpoint) |
 | PUB-005 | Community users may follow multiple organisations. | README.md; ADR-002 | 05 | `public.db.test.ts` › follow PUBLIC orgs (idempotent, many) |
 | PUB-006 | Following is separate from management membership and grants no management access. | ADR-002; ADR-006; modules/community/COMMUNITY_AND_DISCOVERY.md | 05 | `public.db.test.ts` › … grants no management access (no membership, tenant routes 404) |
+| PUB-007 | The homepage lists upcoming PUBLISHED events of PUBLIC and ACTIVE organisations to anyone without login, soonest first, with the main photo, and opens each event's full details and images. | ADR-033 §1 | 13 | |
 | PUB-007 | Visibility rules: PUBLIC discoverable and viewable by anyone; UNLISTED only by logged-in users with the link (anonymous 401 LOGIN_REQUIRED); PRIVATE internal only; follow PUBLIC only; follows of non-public orgs hidden but kept. | ADR-019 | 05 | `public.db.test.ts` › profile page; following (hidden, kept, back; NOT_FOLLOWABLE for UNLISTED) |
 
 ## Information hub
@@ -94,6 +95,7 @@ Rules:
 | HUB-004 | Drafts are not public. | modules/information-hub/INFORMATION_HUB.md | 06 | `hub.db.test.ts` › drafts are visible only with the *.manage key; public reads show PUBLISHED only |
 | HUB-005 | Publication respects organisation visibility. | modules/information-hub/INFORMATION_HUB.md | 06 | `hub.db.test.ts` › public reads respect organisation visibility (PRIVATE 404, UNLISTED login required); follower feed |
 | HUB-006 | Events have title, description, startsAt/endsAt (UTC, endsAt ≥ startsAt) and optional location; publishing an event notifies members (event.published). | ADR-021 | 06 | `hub.db.test.ts` › validation (event times, incl. patch against stored times); publishing (and republishing) an event notifies every other member |
+| HUB-007 | Posts and events can have up to 5 images (JPEG, PNG, WebP, 5 MB each, checked by content, scanned, metadata removed); one is the main photo, chosen by the editor; images are managed on DRAFTs only and follow the item's visibility. | ADR-033 §2–6 | 13 | |
 
 ## Operations
 

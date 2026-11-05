@@ -2,6 +2,7 @@
 
 ## Status
 Accepted (2026-10-06) by the product owner. Closes OQ-14. Amends one rule of ADR-014 (upload path), see §3.
+- Amended 2026-11-05 by ADR-033: a third use, hub images on bulletin posts and events (JPEG, PNG, WebP, 5 MB, up to 5 per item, public prefix `public/org/{organisationId}/hub/…`, metadata removed).
 
 ## Context
 - `architecture/SECURITY_ARCHITECTURE.md`: "safe file uploads".

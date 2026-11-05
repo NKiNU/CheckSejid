@@ -2,6 +2,7 @@
 
 ## Status
 Accepted (2026-10-06) by the product owner. Closes OQ-17. Approves one spec extension: ARCHIVED → PUBLISHED (republish), recorded in `modules/information-hub/INFORMATION_HUB.md`.
+- Amended 2026-11-05 by ADR-033: posts and events can have up to 5 images with one main photo, and upcoming events of public organisations are listed on the homepage without login.
 
 ## Context
 - `modules/information-hub/INFORMATION_HUB.md`: "Includes announcements/bulletin posts and events. Content lifecycle: DRAFT → PUBLISHED → ARCHIVED. Only authorised users manage tenant content; drafts are not public; publication respects organisation visibility."
