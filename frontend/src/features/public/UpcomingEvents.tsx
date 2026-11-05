@@ -16,7 +16,8 @@ export function UpcomingEvents() {
 
   const load = (cursor?: string) =>
     api.upcomingEvents(cursor).then(
-      (r) => (setEvents((old) => [...(old ?? []), ...r.events]), setNext(r.nextCursor), setError(null)),
+      // The first page replaces (a repeated first load must not duplicate); only "Load more" appends.
+      (r) => (setEvents((old) => (cursor ? [...(old ?? []), ...r.events] : r.events)), setNext(r.nextCursor), setError(null)),
       (e) => setError(message(e)),
     )
   useEffect(() => {
