@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { discoverPath, follow, shareLink, uploadProfileImage } from './api.ts'
+import { discoverPath, follow, shareLink, upcomingEvents, uploadProfileImage } from './api.ts'
 
 const ok = (status = 200, body: unknown = {}) => new Response(status === 204 ? null : JSON.stringify(body), { status })
 afterEach(() => vi.unstubAllGlobals())
@@ -26,6 +26,14 @@ describe('public api', () => {
     const init = fn.mock.calls[0]![1]!
     expect([fn.mock.calls[0]![0], init.method, init.body]).toEqual(['/orgs/o1/logo', 'PUT', file])
     expect(new Headers(init.headers).get('Content-Type')).toBeNull()
+  })
+
+  it('pages upcoming events with the cursor', async () => {
+    const fn = vi.fn<typeof fetch>().mockImplementation(async () => ok(200, { events: [], nextCursor: null }))
+    vi.stubGlobal('fetch', fn)
+    await upcomingEvents()
+    await upcomingEvents('e 1')
+    expect(fn.mock.calls.map((c) => c[0])).toEqual(['/public/events/upcoming', '/public/events/upcoming?cursor=e%201'])
   })
 
   it('share links carry the organisation id', () => {

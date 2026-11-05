@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input.tsx'
 import { Label } from '@/components/ui/label.tsx'
 import { Textarea } from '@/components/ui/textarea.tsx'
 import * as api from './api.ts'
+import { Gallery, ImageManager } from './Images.tsx'
 import { contentStatusVariant, needsClamp } from './status.ts'
 
 // Phase 06: bulletin posts and events with their lifecycle. Controls follow the caller's keys; the
@@ -109,6 +110,11 @@ export function HubPanel({ orgId, perms }: { orgId: string; perms: ReadonlySet<s
               </p>
             )}
             {text && <Clamp text={text} />}
+            {item.status === 'DRAFT' && perms.has(kind === 'post' ? 'bulletin.manage' : 'event.manage') ? (
+              <ImageManager orgId={orgId} kind={kind} item={item} run={run} />
+            ) : (
+              <Gallery images={item.images} title={item.title} />
+            )}
             {actions(kind, item)}
           </CardContent>
         </Card>
