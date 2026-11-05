@@ -380,6 +380,7 @@ export const en = {
   'hub.img.type': 'Only JPEG, PNG or WebP photos are allowed.',
   'hub.img.big': 'Photos must be 5 MB or smaller.',
   'err.TOO_MANY_IMAGES': 'This item already has the maximum of 5 photos.',
+  'err.INVALID_IMAGE': 'This image file is damaged or incomplete. Try saving it again or choose another photo.',
 } as const
 
 export type Key = keyof typeof en

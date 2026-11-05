@@ -36,7 +36,7 @@ publicRouter.get("/public/events/upcoming", readLimit, async (req, res) => {
   res.json(await pub.upcomingEvents(z.strictObject({ cursor: z.uuid().optional(), limit: discoverQuery.shape.limit }).parse(req.query)));
 });
 
-publicRouter.get("/public/orgs/:orgId",readLimit, optionalAuth, async (req, res) => {
+publicRouter.get("/public/orgs/:orgId", readLimit, optionalAuth, async (req, res) => {
   res.json({ organisation: await pub.getPublicOrganisation(req.params["orgId"] as string, req.auth?.userId) });
 });
 

@@ -381,4 +381,5 @@ export const ms: Record<Key, string> = {
   'hub.img.type': 'Hanya foto JPEG, PNG atau WebP dibenarkan.',
   'hub.img.big': 'Foto mestilah 5 MB atau lebih kecil.',
   'err.TOO_MANY_IMAGES': 'Item ini sudah mempunyai had maksimum 5 foto.',
+  'err.INVALID_IMAGE': 'Fail imej ini rosak atau tidak lengkap. Cuba simpan semula atau pilih foto lain.',
 }
