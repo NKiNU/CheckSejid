@@ -30,6 +30,7 @@ async function eraseOrganisation(r: ErasureRequest) {
           const db = forTenant(organisationId, tx);
           files = [
             ...(await db.financeAttachment.findMany({ select: { objectKey: true } })).map((a) => a.objectKey),
+            ...(await db.hubImage.findMany({ select: { objectKey: true } })).map((i) => i.objectKey),
             ...[org.logoKey, org.coverKey].filter((k): k is string => Boolean(k)),
           ];
           for (const model of registry) await (db as unknown as Record<string, Del>)[delegateOf(model)]!.deleteMany({});

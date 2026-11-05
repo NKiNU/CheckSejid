@@ -1,6 +1,7 @@
 import { Router, type Request, type RequestHandler } from "express";
 import { MemoryStore } from "express-rate-limit";
 import { z } from "zod";
+import { IMAGE_TYPES, MB, checkUpload, rawUpload } from "../../uploads.ts";
 import { optionalAuth, requireAuth } from "../identity/auth.ts";
 import { limiter } from "../identity/identity.routes.ts";
 import type { Permission } from "../rbac/permissions.ts";
@@ -16,6 +17,7 @@ export const hubRateLimitStores = { write: new MemoryStore(), read: new MemorySt
 const writeLimit = limiter(300, hubRateLimitStores.write, (req: Request) => `user:${req.auth!.userId}`);
 const readLimit = limiter(600, hubRateLimitStores.read);
 
+const HUB_IMAGE_LIMIT = 5 * MB; // ADR-033 §2
 const page = z.strictObject({ cursor: z.uuid().optional(), limit: z.coerce.number().int().min(1).max(50).default(20) });
 const listQuery = page.extend({ status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional() });
 const id = z.uuid();
@@ -77,6 +79,24 @@ for (const kind of ["post", "event"] as const) {
   hubRouter.delete(`${base}/:id`, ...tenantWrite(manage), async (req, res) => {
     await hub.remove(actor(req), kind, itemId(req, kind));
     res.status(204).end();
+  });
+
+  // ADR-033: images of a draft. Guards first, then the body (like the logo upload).
+  const imageId = (req: Request) => {
+    const v = req.params["imageId"];
+    if (!id.safeParse(v).success) throw hub.imageNotFound();
+    return v as string;
+  };
+  hubRouter.post(`${base}/:id/images`, ...tenantWrite(manage), rawUpload(HUB_IMAGE_LIMIT), async (req, res) => {
+    const file = checkUpload(req.body, IMAGE_TYPES);
+    res.status(201).json({ image: await hub.addImage(actor(req), kind, itemId(req, kind), file) });
+  });
+  hubRouter.delete(`${base}/:id/images/:imageId`, ...tenantWrite(manage), async (req, res) => {
+    await hub.removeImage(actor(req), kind, itemId(req, kind), imageId(req));
+    res.status(204).end();
+  });
+  hubRouter.post(`${base}/:id/images/:imageId/main`, ...tenantWrite(manage), async (req, res) => {
+    res.json({ images: await hub.setMainImage(actor(req), kind, itemId(req, kind), imageId(req)) });
   });
 
   for (const action of ["publish", "archive"] as const) {

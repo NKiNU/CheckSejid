@@ -66,14 +66,17 @@ async function seed(name = "Masjid A") {
   await putObject(objectKey, FILES.png, "image/png");
   await prisma.financeAttachment.create({ data: { organisationId: id, expenseId: expense.id, objectKey, contentType: "image/png", sizeBytes: FILES.png.length, uploadedById: t.userId } });
   await prisma.financeApproval.create({ data: { organisationId: id, recordType: "expense", recordId: expense.id, decision: "APPROVED", actorUserId: t.userId } });
-  await prisma.post.create({ data: { organisationId: id, title: "p", body: "b", createdById: t.userId } });
+  const post = await prisma.post.create({ data: { organisationId: id, title: "p", body: "b", createdById: t.userId } });
+  const imageKey = newObjectKey(`public/org/${id}/hub`, "image/png"); // ADR-033
+  await putObject(imageKey, FILES.png, "image/png");
+  await prisma.hubImage.create({ data: { organisationId: id, postId: post.id, objectKey: imageKey, isMain: true } });
   await prisma.event.create({ data: { organisationId: id, title: "e", description: "d", startsAt: new Date(), endsAt: new Date(), createdById: t.userId } });
   const programme = await prisma.programme.create({ data: { organisationId: id, title: "Ramadan", startDate: new Date("2026-03-01"), endDate: new Date("2026-03-30") } });
   await prisma.task.create({ data: { organisationId: id, programmeId: programme.id, title: "t" } });
   await prisma.rosterEntry.create({ data: { organisationId: id, programmeId: programme.id, userId: member.userId, duty: "Imam", startsAt: new Date(), endsAt: new Date() } });
   const follower = await createUser();
   await prisma.follow.create({ data: { userId: follower.userId, organisationId: id } });
-  return { t, member, follower, objectKey };
+  return { t, member, follower, objectKey, imageKey };
 }
 
 describe.skipIf(!hasDb)("erasure (database)", () => {
@@ -194,6 +197,7 @@ describe.skipIf(!hasDb)("erasure (database)", () => {
       expect(Object.values(gone).every((n) => n === 0)).toBe(true);
       expect(await counts(b.t.organisationId)).toEqual(before);
       await expect(getObjectBytes(a.objectKey)).rejects.toThrow();
+      await expect(getObjectBytes(a.imageKey)).rejects.toThrow(); // hub image files go too (ADR-033)
       expect((await getObjectBytes(b.objectKey)).length).toBeGreaterThan(0);
       const req = await prisma.erasureRequest.findFirstOrThrow({ where: { subjectId: a.t.organisationId } });
       expect(req.status).toBe("COMPLETED");

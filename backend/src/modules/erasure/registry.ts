@@ -11,6 +11,7 @@ export const registry = [
   "RosterEntry",
   "Task",
   "Programme",
+  "HubImage", // ADR-033
   "Post",
   "Event",
   "Follow",

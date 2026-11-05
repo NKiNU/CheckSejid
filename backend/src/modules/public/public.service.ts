@@ -9,6 +9,7 @@ import { deleteObject, newObjectKey, publicUrl, putObject } from "../../storage.
 import type { FileType } from "../../uploads.ts";
 import { audit } from "../rbac/rbac.ts";
 import { orgNotFound } from "../tenancy/tenant.ts";
+import { withImages } from "../hub/images.ts";
 
 const publicSelect = {
   id: true,
@@ -76,6 +77,28 @@ export async function discover(query: DiscoverQuery) {
   });
   const page = rows.slice(0, query.limit);
   return { organisations: page.map(publicView), nextCursor: rows.length > query.limit ? page.at(-1)!.id : null };
+}
+
+// PUB-007 / ADR-033 §1: upcoming published events of PUBLIC + ACTIVE organisations, soonest first, public fields only.
+// Reviewed cross-tenant read: the organisation filter is the visibility rule itself.
+export async function upcomingEvents(opts: { cursor?: string; limit: number }) {
+  const rows = await prisma.event.findMany({
+    where: { status: "PUBLISHED", endsAt: { gte: new Date() }, organisation: LISTED },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      startsAt: true,
+      endsAt: true,
+      location: true,
+      organisation: { select: { id: true, name: true, type: true, state: true } },
+    },
+    orderBy: [{ startsAt: "asc" }, { id: "asc" }],
+    take: opts.limit + 1,
+    ...(opts.cursor && { cursor: { id: opts.cursor }, skip: 1 }),
+  });
+  const page = rows.slice(0, opts.limit);
+  return { events: await withImages(prisma, "event", page), nextCursor: rows.length > opts.limit ? page.at(-1)!.id : null };
 }
 
 // PUB-005/006 + ADR-019 §3: following only PUBLIC + ACTIVE organisations. Idempotent. A follow is not a

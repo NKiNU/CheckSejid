@@ -238,4 +238,73 @@ describe.skipIf(!hasDb)("public platform (database)", () => {
       expect([blocked.status, blocked.body.error.code]).toEqual([409, "ORGANISATION_NOT_WRITABLE"]);
     });
   });
+
+  describe("upcoming events on the homepage (PUB-007, ADR-033 §1)", () => {
+    const hour = 3_600_000;
+    const event = (t: { organisationId: string; userId: string }, title: string, startH: number, extra: object = {}) =>
+      prisma.event.create({
+        data: {
+          organisationId: t.organisationId,
+          createdById: t.userId,
+          title,
+          description: "d",
+          startsAt: new Date(Date.now() + startH * hour),
+          endsAt: new Date(Date.now() + (startH + 2) * hour),
+          status: "PUBLISHED",
+          ...extra,
+        },
+      });
+    const upcoming = (q: object = {}) => request(app).get("/public/events/upcoming").query(q);
+
+    it("lists only published, not-ended events of PUBLIC + ACTIVE organisations, soonest first, with images, no login", async () => {
+      const pub = await activeTenant("Masjid Upcoming", "PUBLIC");
+      const unl = await activeTenant("Unlisted Upcoming", "UNLISTED");
+      const priv = await activeTenant("Private Upcoming", "PRIVATE");
+      const susp = await activeTenant("Suspended Upcoming", "PUBLIC");
+      const tag = `up-${randomUUID()}`;
+      const later = await event(pub, `${tag} later`, 48);
+      const soon = await event(pub, `${tag} soon`, 1, { location: "Hall" });
+      const running = await event(pub, `${tag} running`, -1); // started, ends in 1 h
+      await event(pub, `${tag} past`, -10);
+      await event(pub, `${tag} draft`, 5, { status: "DRAFT" });
+      await event(pub, `${tag} archived`, 5, { status: "ARCHIVED" });
+      await event(unl, `${tag} unlisted`, 5);
+      await event(priv, `${tag} private`, 5);
+      await event(susp, `${tag} suspended`, 5);
+      await setOrgStatus(susp, "SUSPENDED");
+      const key = `public/org/${pub.organisationId}/hub/${randomUUID()}.png`;
+      await prisma.hubImage.create({ data: { organisationId: pub.organisationId, eventId: soon.id, objectKey: key, isMain: true } });
+
+      const res = await upcoming({ limit: 50 }).expect(200);
+      const mine = res.body.events.filter((e: { title: string }) => e.title.startsWith(tag));
+      expect(mine.map((e: { id: string }) => e.id)).toEqual([running.id, soon.id, later.id]);
+      expect(mine[1]).toEqual({
+        id: soon.id,
+        title: `${tag} soon`,
+        description: "d",
+        startsAt: soon.startsAt.toISOString(),
+        endsAt: soon.endsAt.toISOString(),
+        location: "Hall",
+        images: [{ id: expect.any(String), url: expect.stringContaining(key), isMain: true }],
+        organisation: { id: pub.organisationId, name: "Masjid Upcoming", type: "masjid", state: "Selangor" },
+      });
+      expect(mine[0].images).toEqual([]);
+    });
+
+    it("pages with a keyset cursor and validates the query", async () => {
+      const t = await activeTenant("Paged Upcoming", "PUBLIC");
+      const [a, b, c] = [await event(t, "p1", 5000), await event(t, "p2", 5001), await event(t, "p3", 5002)];
+      expect((await upcoming({ limit: 1000 })).status).toBe(400);
+      const ids: string[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = (await upcoming({ limit: 2, ...(cursor && { cursor }) }).expect(200)).body;
+        ids.push(...page.events.map((e: { id: string }) => e.id));
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor);
+      expect(ids.filter((id) => [a.id, b.id, c.id].includes(id))).toEqual([a.id, b.id, c.id]);
+      expect((await upcoming({ cursor: "nope" })).status).toBe(400);
+      expect((await upcoming({ foo: 1 })).status).toBe(400);
+    });
+  });
 });

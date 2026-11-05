@@ -19,6 +19,8 @@ model Post {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  images         HubImage[]
+
   @@index([organisationId, status, publishedAt])
 }
 
@@ -37,5 +39,25 @@ model Event {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  images         HubImage[]
+
   @@index([organisationId, status, startsAt])
+}
+
+// ADR-033: up to 5 public images per post or event (exactly one of postId / eventId). Files live under public/.
+model HubImage {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @db.Uuid
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Restrict)
+  postId         String?      @db.Uuid
+  post           Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  eventId        String?      @db.Uuid
+  event          Event?       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  objectKey      String
+  isMain         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([postId])
+  @@index([eventId])
+  @@index([organisationId])
 }

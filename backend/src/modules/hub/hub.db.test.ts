@@ -1,11 +1,14 @@
 // Phase 06 (ADR-021) integration tests against a real PostgreSQL.
 import { randomUUID } from "node:crypto";
 import request from "supertest";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { app } from "../../app.ts";
 import { prisma } from "../../db.ts";
 import { createTenant, createUser, expectCrossTenantDenied, type TestTenant } from "../../test/cross-tenant.ts";
 import { activeTenant, addMember, as, resetStores, setOrgStatus } from "../../test/fixtures.ts";
+import { getObjectBytes } from "../../storage.ts";
+import { FILES, startS3 } from "../../test/s3.ts";
+import { GPS, jpegWithGps, pngPlain, webpWithGps } from "../../test/images.ts";
 import { publicRateLimitStores } from "../public/public.routes.ts";
 import { rbacRateLimitStores } from "../rbac/rbac.routes.ts";
 import { tenancyRateLimitStores } from "../tenancy/tenancy.routes.ts";
@@ -31,8 +34,13 @@ const act = (t: TestTenant, kind: "posts" | "events", id: string, action: string
   request(app).post(`${base(t, kind)}/${id}/${action}`).set(as(who));
 
 describe.skipIf(!hasDb)("information hub (database)", () => {
+  let stopS3: () => Promise<void>;
+  beforeAll(async () => {
+    stopS3 = await startS3();
+  });
   beforeEach(() => resetStores(tenancyRateLimitStores, rbacRateLimitStores, publicRateLimitStores, hubRateLimitStores));
   afterAll(async () => {
+    await stopS3();
     await prisma.$disconnect();
   });
 
@@ -143,7 +151,7 @@ describe.skipIf(!hasDb)("information hub (database)", () => {
       const pub = await seed("PUBLIC");
       const posts = await request(app).get(`/public/orgs/${pub.t.organisationId}/posts`).expect(200);
       expect(posts.body.posts.map((p: { id: string }) => p.id)).toEqual([pub.live]);
-      expect(Object.keys(posts.body.posts[0]).sort()).toEqual(["body", "id", "publishedAt", "title"]);
+      expect(Object.keys(posts.body.posts[0]).sort()).toEqual(["body", "id", "images", "publishedAt", "title"]);
       const events = await request(app).get(`/public/orgs/${pub.t.organisationId}/events`).expect(200);
       expect(events.body.events.map((e: { id: string }) => e.id)).toEqual([pub.upcoming]);
 
@@ -208,6 +216,152 @@ describe.skipIf(!hasDb)("information hub (database)", () => {
       await expectCrossTenantDenied(attacker, routes(victim), { snapshot });
       // ID guessing under the attacker's own organisation: the module's own not-found code.
       await expectCrossTenantDenied(attacker, routes(attacker, "own").slice(1), { snapshot });
+    });
+  });
+
+  describe("images on drafts (HUB-007, ADR-033)", () => {
+    const upload = (t: TestTenant, kind: "posts" | "events", id: string, body: Buffer, who: Who = t) =>
+      request(app).post(`${base(t, kind)}/${id}/images`).set(as(who)).set("Content-Type", "application/octet-stream").send(body);
+    const draft = async (t: TestTenant, kind: "posts" | "events") =>
+      (kind === "posts" ? (await createPost(t).expect(201)).body.post : (await request(app).post(base(t, kind)).set(as(t)).send(eventBody()).expect(201)).body.event).id as string;
+    const item = async (t: TestTenant, kind: "posts" | "events", id: string) =>
+      (await request(app).get(`${base(t, kind)}/${id}`).set(as(t)).expect(200)).body[kind === "posts" ? "post" : "event"];
+    const keyOf = async (imageId: string) => (await prisma.hubImage.findUniqueOrThrow({ where: { id: imageId } })).objectKey;
+    type Img = { id: string; isMain: boolean };
+
+    for (const kind of ["posts", "events"] as const) {
+      const one = kind === "posts" ? "post" : "event";
+      it(`${kind}: strips metadata, first image is main, set-main and remove keep exactly one main, files follow`, async () => {
+        const t = await activeTenant();
+        const id = await draft(t, kind);
+        expect((await item(t, kind, id)).images).toEqual([]);
+
+        const a = (await upload(t, kind, id, jpegWithGps()).expect(201)).body.image;
+        expect(a).toMatchObject({ isMain: true });
+        expect(a.url).toMatch(new RegExp(`/public/org/${t.organisationId}/hub/[0-9a-f-]{36}\\.jpg$`));
+        const stored = await getObjectBytes(await keyOf(a.id));
+        expect(stored.includes(Buffer.from(GPS))).toBe(false);
+        expect(stored.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
+        const b = (await upload(t, kind, id, pngPlain()).expect(201)).body.image;
+        const c = (await upload(t, kind, id, webpWithGps()).expect(201)).body.image;
+        expect([b.isMain, c.isMain]).toEqual([false, false]);
+        expect((await getObjectBytes(await keyOf(c.id))).includes(Buffer.from(GPS))).toBe(false);
+        expect((await item(t, kind, id)).images.map((i: Img) => i.id)).toEqual([a.id, b.id, c.id]);
+        expect((await request(app).get(base(t, kind)).set(as(t)).expect(200)).body[kind][0].images).toHaveLength(3);
+
+        const moved = await request(app).post(`${base(t, kind)}/${id}/images/${c.id}/main`).set(as(t)).expect(200);
+        expect(moved.body.images.map((i: Img) => [i.id, i.isMain])).toEqual([[a.id, false], [b.id, false], [c.id, true]]);
+
+        const aKey = await keyOf(a.id);
+        const cKey = await keyOf(c.id);
+        await request(app).delete(`${base(t, kind)}/${id}/images/${c.id}`).set(as(t)).expect(204); // the main one
+        await expect(getObjectBytes(cKey)).rejects.toThrow();
+        expect((await item(t, kind, id)).images.map((i: Img) => [i.id, i.isMain])).toEqual([[a.id, true], [b.id, false]]); // earliest promoted
+        const gone = await request(app).delete(`${base(t, kind)}/${id}/images/${c.id}`).set(as(t));
+        expect([gone.status, gone.body.error.code]).toEqual([404, "IMAGE_NOT_FOUND"]);
+        expect((await request(app).post(`${base(t, kind)}/${id}/images/not-a-uuid/main`).set(as(t))).body.error.code).toBe("IMAGE_NOT_FOUND");
+
+        const audits = await prisma.auditLog.findMany({ where: { organisationId: t.organisationId, action: { startsWith: `hub.${one}.image.` } } });
+        expect(audits.map((x) => x.action).sort()).toEqual(["add", "add", "add", "main", "remove"].map((x) => `hub.${one}.image.${x}`));
+
+        await request(app).delete(`${base(t, kind)}/${id}`).set(as(t)).expect(204); // deleting the draft deletes images and files
+        expect(await prisma.hubImage.count({ where: { organisationId: t.organisationId } })).toBe(0);
+        await expect(getObjectBytes(aKey)).rejects.toThrow();
+      });
+    }
+
+    it("at most 5 images, only JPEG/PNG/WebP by content, at most 5 MB", async () => {
+      const t = await activeTenant();
+      const id = await draft(t, "posts");
+      for (let i = 0; i < 5; i++) await upload(t, "posts", id, pngPlain()).expect(201);
+      const sixth = await upload(t, "posts", id, pngPlain());
+      expect([sixth.status, sixth.body.error.code]).toEqual([409, "TOO_MANY_IMAGES"]);
+      expect(await prisma.hubImage.count({ where: { postId: id } })).toBe(5);
+      expect((await prisma.hubImage.findMany({ where: { postId: id } })).filter((i) => i.isMain)).toHaveLength(1);
+
+      const other = await draft(t, "posts");
+      for (const bad of [FILES.html, FILES.pdf, Buffer.from("ftypheic".padEnd(40, "x"))]) {
+        const r = await upload(t, "posts", other, bad);
+        expect([r.status, r.body.error.code]).toEqual([415, "UNSUPPORTED_FILE_TYPE"]);
+      }
+      const big = await upload(t, "posts", other, Buffer.concat([pngPlain(), Buffer.alloc(5 * 1024 * 1024)]));
+      expect([big.status, big.body.error.code]).toEqual([413, "FILE_TOO_LARGE"]);
+      expect((await upload(t, "posts", other, Buffer.alloc(0))).body.error.code).toBe("FILE_REQUIRED");
+      const broken = await upload(t, "posts", other, pngPlain().subarray(0, 30));
+      expect([broken.status, broken.body.error.code]).toEqual([400, "INVALID_IMAGE"]);
+      expect(await prisma.hubImage.count({ where: { postId: other } })).toBe(0);
+    });
+
+    it("needs the item's manage key and an ACTIVE organisation", async () => {
+      const t = await activeTenant();
+      const treasurer = await addMember(t, ["treasurer"]); // no hub keys
+      const staff = await addMember(t, ["staff"]);
+      const id = await draft(t, "events");
+      const denied = await upload(t, "events", id, pngPlain(), treasurer);
+      expect([denied.status, denied.body.error.code]).toEqual([403, "FORBIDDEN"]);
+      const img = (await upload(t, "events", id, pngPlain(), staff).expect(201)).body.image.id;
+      expect((await request(app).delete(`${base(t, "events")}/${id}/images/${img}`).set(as(treasurer))).status).toBe(403);
+      expect((await request(app).post(`${base(t, "events")}/${id}/images/${img}/main`).set(as(treasurer))).status).toBe(403);
+      await setOrgStatus(t, "SUSPENDED");
+      const suspended = await upload(t, "events", id, pngPlain());
+      expect([suspended.status, suspended.body.error.code]).toEqual([409, "ORGANISATION_NOT_WRITABLE"]);
+      expect(await prisma.hubImage.count({ where: { eventId: id } })).toBe(1);
+    });
+
+    it("images change only while the item is a DRAFT (409 INVALID_STATE_TRANSITION) and show once published", async () => {
+      const t = await activeTenant("Hub PUBLIC", "PUBLIC");
+      const id = await draft(t, "events");
+      const img = (await upload(t, "events", id, pngPlain()).expect(201)).body.image;
+      expect((await request(app).get(`/public/orgs/${t.organisationId}/events`).expect(200)).body.events).toEqual([]);
+      await act(t, "events", id, "publish").expect(200);
+      const live = await request(app).get(`/public/orgs/${t.organisationId}/events`).expect(200);
+      expect(live.body.events[0].images).toEqual([img]);
+      for (const res of [
+        await upload(t, "events", id, pngPlain()),
+        await request(app).delete(`${base(t, "events")}/${id}/images/${img.id}`).set(as(t)),
+        await request(app).post(`${base(t, "events")}/${id}/images/${img.id}/main`).set(as(t)),
+      ]) expect([res.status, res.body.error.code]).toEqual([409, "INVALID_STATE_TRANSITION"]);
+      expect(await prisma.hubImage.count({ where: { eventId: id } })).toBe(1);
+      await act(t, "events", id, "archive").expect(200);
+      expect((await request(app).get(`/public/orgs/${t.organisationId}/events`).expect(200)).body.events).toEqual([]);
+
+      const post = await draft(t, "posts");
+      const pimg = (await upload(t, "posts", post, pngPlain()).expect(201)).body.image;
+      await act(t, "posts", post, "publish").expect(200);
+      expect((await request(app).get(`/public/orgs/${t.organisationId}/posts`).expect(200)).body.posts[0].images).toEqual([pimg]);
+      const u = await createUser();
+      await request(app).put(`/me/follows/${t.organisationId}`).set(as(u)).expect(204);
+      expect((await request(app).get("/me/feed").set(as(u)).expect(200)).body.posts[0].images).toEqual([pimg]);
+    });
+
+    it("another organisation cannot add, remove or promote our images (TENANT)", async () => {
+      const victim = await activeTenant();
+      const id = await draft(victim, "posts");
+      const img = (await upload(victim, "posts", id, pngPlain()).expect(201)).body.image;
+      const second = (await upload(victim, "posts", id, pngPlain()).expect(201)).body.image;
+      const attacker = await activeTenant();
+      const snapshot = () => prisma.hubImage.findMany({ where: { organisationId: victim.organisationId }, orderBy: { id: "asc" } });
+      await expectCrossTenantDenied(
+        attacker,
+        [
+          { method: "post", path: `${base(victim, "posts")}/${id}/images`, body: {} },
+          { method: "delete", path: `${base(victim, "posts")}/${id}/images/${img.id}` },
+          { method: "post", path: `${base(victim, "posts")}/${id}/images/${second.id}/main` },
+        ],
+        { snapshot },
+      );
+      // Guessing ids under the attacker's own organisation.
+      const mine = await draft(attacker, "posts");
+      const own = (await upload(attacker, "posts", mine, pngPlain()).expect(201)).body.image;
+      for (const r of [
+        await upload(attacker, "posts", id, pngPlain()),
+        await request(app).delete(`${base(attacker, "posts")}/${id}/images/${img.id}`).set(as(attacker)),
+        await request(app).delete(`${base(attacker, "posts")}/${mine}/images/${img.id}`).set(as(attacker)),
+        await request(app).post(`${base(attacker, "posts")}/${mine}/images/${second.id}/main`).set(as(attacker)),
+      ])
+        expect([r.status, ["POST_NOT_FOUND", "IMAGE_NOT_FOUND"].includes(r.body.error.code)]).toEqual([404, true]);
+      expect(await snapshot()).toHaveLength(2);
+      expect((await item(attacker, "posts", mine)).images).toEqual([own]);
     });
   });
 });

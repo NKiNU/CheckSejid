@@ -65,6 +65,7 @@ model Organisation {
   follows       Follow[]
   posts         Post[]
   events        Event[]
+  hubImages     HubImage[]
   programmes    Programme[]
   tasks         Task[]
   rosterEntries RosterEntry[]
