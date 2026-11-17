@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+
+/* All design tokens. Components use these via Tailwind (bg-brand, text-muted, ...). See docs/product/UI_DESIGN.md. */
+@theme {
+  --color-brand: #0F5A47;
+  --color-brand-strong: #0A4334;
+  --color-brand-soft: #E4EFEA;
+  --color-gold: #C9973A;
+  --color-gold-soft: #F5ECDA;
+  --color-gold-ink: #7A5310;
+  --color-ink: #10201B;
+  --color-ink-2: #182B25;
+  --color-ink-3: #2A3B35;
+  --color-on-ink: #DCE5E0;
+  --color-on-ink-muted: #A9BAB2;
+  --color-muted: #56655F;
+  --color-line: #E3E7E2;
+  --color-line-strong: #C9D1CB;
+  --color-ground: #F4F5F1;
+  --color-ground-2: #E9ECE7;
+  --color-surface: #FFFFFF;
+  --color-subtle: #F8F9F6;
+  --color-neutral-soft: #EEF1ED;
+  --color-danger: #A13A2E;
+  --color-danger-soft: #F7E3E0;
+  --color-danger-line: #E6BDB6;
+  --color-info: #24527D;
+  --color-info-soft: #E2EBF4;
+  --color-plum: #5E3A6E;
+  --color-plum-soft: #EFE6F2;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --radius-card: 18px;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+button, a { touch-action: manipulation; }
+input, textarea, select { font-size: 16px; }
+.tabular { font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.pb-safe { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
