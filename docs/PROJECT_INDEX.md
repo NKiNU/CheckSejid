@@ -14,3 +14,9 @@
 
 ## SaaS
 `business/SUBSCRIPTION_PLANS.md`, `saas/SUBSCRIPTION_AND_BILLING.md`, `saas/FEATURE_ENTITLEMENTS.md`, `saas/LIFECYCLE_STATE_MACHINE.md`
+
+## Product and UI
+`product/PRODUCT_VISION.md`, `product/USER_JOURNEYS.md`, `product/UI_DESIGN.md`, `modules/information-hub/INFORMATION_HUB.md`, `decisions/ADR-008-BULLETIN_FIRST_COMMUNITY.md`
+
+## Code
+`apps/web`: React + Vite frontend (community app and management workspace). Runs on in-memory seed data until the backend phases land.

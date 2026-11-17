@@ -13,5 +13,6 @@ Masyarakat is a multi-tenant SaaS platform for Islamic organisations and communi
 - Online donations: Coming Soon/Post-MVP.
 - Prayer Times, Hijri Calendar, Qibla: included SaaS capabilities.
 - Legacy modules: retained but explicitly phased.
+- Bulletin-first community experience (ADR-008).
 
 Start with `CLAUDE.md`, then `PROJECT_INDEX.md`.
